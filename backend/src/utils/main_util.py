@@ -1,3 +1,4 @@
+import os
 from typing import IO, Any, Dict, Optional
 from certificate_extraction_fields import scrap_udemy
 

@@ -7,13 +7,15 @@ import numpy as np
 import cv2
 import pytesseract
 from pdf2image import convert_from_bytes
-from PIL import Image, ImageEnchance, ImageFilder
+from PIL import Image, ImageEnhance, ImageFilter
 
 Box = Tuple[int, int, int, int]
+
 
 def scale_coords(coords: Box, factor: float) -> Box:
     x0, y0, x1, y1 = coords
     return (int(x0 * factor), int(y0 * factor), int(x1 * factor), int(y1 * factor))
+
 
 def extract_certificate_parts(img: Image.Image) -> str:
     base_parts: List[Box] = [
@@ -32,12 +34,19 @@ def extract_certificate_parts(img: Image.Image) -> str:
     for coords in scaled_parts:
         part_img = img.crop(coords)
         gray = part_img.convert("L")
-        contrast = ImageEnchance.Contrast(gray).enchance(2.5)
+        contrast = ImageEnhance.Contrast(gray).enhance(2.5)
         arr = np.array(contrast)
+
+        if arr.dtype != np.uint8:
+            arr = arr.astype(np.uint8)
+
         _, bw = cv2.threshold(arr, 130, 255, cv2.THRESH_BINARY)
         binarized = Image.fromarray(bw)
         part_text: str = pytesseract.image_to_string(binarized, config="--psm 7")
-        parts.append(part_text.strip().replace("\n", "").replace(" ", "").replace("-", ""))
+        parts.append(
+            part_text.strip().replace("\n", "").replace(" ", "").replace("-", "")
+        )
+
     cert_number = "-".join(parts)
     return cert_number
 
@@ -61,6 +70,7 @@ def _is_breaker_line(s: str) -> bool:
         ]
     )
 
+
 def _merge_reasonable_title_lines(lines: List[str]) -> str:
     title_chunks: List[str] = []
     for ln in lines:
@@ -70,13 +80,14 @@ def _merge_reasonable_title_lines(lines: List[str]) -> str:
             continue
         if len(ln.strip()) >= 3:
             title_chunks.append(ln.strip())
+
     if len(title_chunks) > 2:
         title_chunks = sorted(title_chunks, key=len, reverse=True)[:2]
     return " ".join(title_chunks).strip()
-        
+
 
 def extract_certificate_fields(img: Image.Image, cert_id: Optional[str] = None) -> Dict[str, str]:
-    text: str = pytesseract.image_to_string(img, config="--psm 6") # sometimes its better to use config="--psm 6"
+    text: str = pytesseract.image_to_string(img, config="--psm 6")
     lines: List[str] = _clean_lines(text)
 
     instructor: Optional[str] = None
@@ -90,7 +101,7 @@ def extract_certificate_fields(img: Image.Image, cert_id: Optional[str] = None) 
     course_name: str = ""
     success_idx = next((i for i, ln in enumerate(lines) if "has successfully completed" in ln.lower()), None)
     if success_idx is not None:
-        following = lines[success_idx + 1 : ]
+        following = lines[success_idx + 1:]
         candidate = _merge_reasonable_title_lines(following)
         if candidate:
             course_name = candidate
@@ -145,11 +156,12 @@ def extract_certificate_from_pdf(file: IO[bytes]) -> Dict[str, str]:
     pages: List[Image.Image] = convert_from_bytes(file_bytes, dpi=400)
     if not pages:
         raise ValueError("No pages found in PDF")
+
     img: Image.Image = pages[0]
 
     cert_id: Optional[str] = extract_certificate_parts(img)
     if cert_id is None:
         raise Exception("Cert is None")
-    
+
     fields: Dict[str, str] = extract_certificate_fields(img, cert_id=cert_id)
     return fields
