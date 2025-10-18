@@ -1,73 +1,85 @@
-# React + TypeScript + Vite
+# CertifyChain Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern Web3 certificate verification platform built with React, TypeScript, and TailwindCSS.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🎨 **Modern UI/UX**: Futuristic design with dark/light theme support
+- 📱 **Responsive Design**: Works seamlessly on desktop and mobile devices
+- 🔗 **Web3 Integration Ready**: Prepared for blockchain functionality
+- 🎯 **Three Main Pages**:
+  - Landing Page with hero section and features
+  - Mint Certificate Page with step-by-step process
+  - All Certificates Page with search and filtering
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 19** with TypeScript
+- **Vite** for fast development and building
+- **TailwindCSS** for styling
+- **React Router** for navigation
+- **Lucide React** for icons
+- **Context API** for theme management
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Install dependencies:
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+2. Start the development server:
+```bash
+npm run dev
 ```
+
+3. Open your browser and navigate to `http://localhost:5173`
+
+## Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── Button.tsx
+│   ├── Card.tsx
+│   ├── Navigation.tsx
+│   └── StepIndicator.tsx
+├── contexts/           # React contexts
+│   └── ThemeContext.tsx
+├── pages/              # Main application pages
+│   ├── LandingPage.tsx
+│   ├── MintCertificatePage.tsx
+│   └── AllCertificatesPage.tsx
+├── utils/              # Utility functions
+│   └── cn.ts
+├── App.tsx             # Main app component
+├── main.tsx            # Application entry point
+└── index.css           # Global styles with TailwindCSS
+```
+
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Run ESLint
+
+## Design System
+
+The application uses a consistent design system with:
+
+- **Colors**: Purple and teal gradients for primary actions
+- **Typography**: Clean, modern sans-serif fonts
+- **Components**: Reusable, accessible UI components
+- **Themes**: Dark mode by default with light mode support
+- **Animations**: Smooth transitions and hover effects
+
+## Future Enhancements
+
+This is currently a UI-only implementation. Future development will include:
+
+- Blockchain integration (Web3 wallet connection)
+- Smart contract interactions
+- File upload and verification logic
+- NFT minting functionality
+- Backend API integration

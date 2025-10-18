@@ -124,8 +124,7 @@ curl -X POST "http://localhost:8000/api/verify_certificate" \
     "Instructor": "Jane Doe",
     "Course Name": "Modern Python: From Zero to Expert",
     "User Name & Surname": "John Smith"
-  },
-  "certificate_url": "https://www.udemy.com/certificate/UC-ABCD-EFGH-IJKL/"
+  }
 }
 ```
 
