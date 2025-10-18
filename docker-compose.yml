@@ -1,6 +1,8 @@
 version: "3.9"
 
 services:
+  ipfs_node:
+    
   frontend:
     build: ./frontend
     volumes:

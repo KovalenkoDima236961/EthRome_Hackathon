@@ -87,7 +87,7 @@ def _merge_reasonable_title_lines(lines: List[str]) -> str:
 
 
 def extract_certificate_fields(img: Image.Image, cert_id: Optional[str] = None) -> Dict[str, str]:
-    text: str = pytesseract.image_to_string(img, config="--psm 6")
+    text: str = pytesseract.image_to_string(img)
     lines: List[str] = _clean_lines(text)
 
     instructor: Optional[str] = None
@@ -135,13 +135,15 @@ def extract_certificate_fields(img: Image.Image, cert_id: Optional[str] = None) 
 
     user_name: Optional[str] = None
     for i, line in enumerate(lines):
-        if _looks_like_human_name(line):
-            next_line = lines[i + 1] if i + 1 < len(lines) else ""
-            if _is_breaker_line(next_line):
+        if re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+$", line):
+            if i + 1 < len(lines) and ("Date" in lines[i + 1] or "Length" in lines[i + 1]):
                 user_name = line
                 break
     if not user_name:
-        user_name = next((ln for ln in lines if _looks_like_human_name(ln)), None)
+        for line in lines:
+            if re.match(r"^[A-Z][a-z]+ [A-Z][a-z]+$", line):
+                user_name = line
+                break
 
     return {
         "Certificate ID": cert_id or "Not found",
