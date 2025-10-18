@@ -4,6 +4,7 @@ import { Wallet, Shield } from 'lucide-react';
 import { useWeb3 } from '../contexts/Web3Context';
 import { Button } from './ui/Button';
 import { ThemeToggle } from './ThemeToggle';
+import GradientText from "../components/GradientText";
 
 export const Navigation: React.FC = () => {
   const { account, isConnected, connectWallet, isLoading, error, clearError } = useWeb3();
@@ -22,7 +23,16 @@ export const Navigation: React.FC = () => {
               <div className="p-2 rounded-lg bg-gradient-primary">
                 <Shield className="h-6 w-6 text-white" />
               </div>
-              <span className="text-xl font-bold gradient-text">CertifyChain</span>
+              <span className="text-xl font-bold gradient-text">
+                <GradientText
+                  colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
+                  animationSpeed={5}
+                  showBorder={false}
+                  className="inline"
+                >
+                  CertifyChain
+                </GradientText>
+              </span>
             </Link>
 
             <div className="hidden md:flex items-center gap-6">

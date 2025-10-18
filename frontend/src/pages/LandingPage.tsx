@@ -2,7 +2,10 @@ import { ArrowRight, Upload, Shield, Award, FileCheck, Network, Hexagon } from "
 import { Button } from "../components/ui/Button";
 import { Navigation } from "../components/Navigation";
 import { Link } from "react-router-dom";
-import heroBg from "../assets/hero-bg.jpeg";
+import GradientText from "../components/GradientText";
+import Aurora from "../components/Aurora";
+import LogoLoop from "../components/LogoLoop";
+import { SiAmazon, SiCoursera, SiUdemy, SiCisco } from 'react-icons/si';
 
 export default function LandingPage() {
   return (
@@ -10,16 +13,19 @@ export default function LandingPage() {
       <Navigation />
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
+      <section className="relative pt-32 pb-5 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-glow opacity-50" />
-        <div 
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: `url(${heroBg})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        />
+        <div className="absolute inset-0 opacity-30">
+          <Aurora
+            colorStops={["#3A29FF", "#FF94B4", "#FF3232"]}
+            blend={0.5}
+            amplitude={3.0}
+            speed={1.0}
+            className="w-full h-full"
+          />
+        </div>
+        {/* Fade out gradient at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-background pointer-events-none" />
         
         {/* Floating Polkadot Dots */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -38,7 +44,14 @@ export default function LandingPage() {
             
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
               Secure Your Certificates on{" "}
-              <span className="gradient-text">Polkadot</span>
+              <GradientText
+                colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
+                animationSpeed={5}
+                showBorder={false}
+                className="inline"
+              >
+                Polkadot
+              </GradientText>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Transform academic and professional certificates into verifiable NFTs on Polkadot blockchain. 
@@ -76,12 +89,49 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Logo Loop Section */}
+      <section className="py-5 relative bg-gradient-to-b from-background/50 to-background">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+          </div>
+          <div className="bg-background/80 backdrop-blur-sm rounded-2xl p-6 border border-border/50">
+            <LogoLoop
+              logos={[
+                // { node: <SiPolkadot />, title: "Polkadot", href: "https://polkadot.network" },
+                // { node: <SiEthereum />, title: "Ethereum", href: "https://ethereum.org" },
+                { node: <SiAmazon />, title: "AWS", href: "https://aws.amazon.com" },
+                { node: <SiCoursera />, title: "Coursera", href: "https://www.coursera.org" },
+                { node: <SiUdemy />, title: "Udemy", href: "https://www.udemy.com" },
+                { node: <SiCisco />, title: "Cisco", href: "https://www.cisco.com" },
+              ]}
+              speed={20}
+              direction="left"
+              logoHeight={48}
+              gap={40}
+              pauseOnHover
+              scaleOnHover
+              fadeOut
+              fadeOutColor="hsl(var(--background))"
+              ariaLabel="Technology partners"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* How It Works Section */}
       <section className="py-20 relative">
-        <div className="container mx-auto px-4">
+        {/* Smooth transition gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background pointer-events-none" />
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-[0.02] pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-gradient-primary rounded-full blur-3xl" />
+          <div className="absolute top-1/3 right-1/4 w-24 h-24 bg-gradient-secondary rounded-full blur-2xl" />
+          <div className="absolute bottom-1/3 left-1/3 w-28 h-28 bg-gradient-primary rounded-full blur-2xl" />
+        </div>
+        <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16 animate-fade-in">
             <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              How It <span className="gradient-text">Works</span>
+              How It Works
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Three simple steps to secure your certificates on Polkadot blockchain
@@ -111,20 +161,20 @@ export default function LandingPage() {
             ].map((item, index) => (
               <div
                 key={index}
-                className="certificate-card p-8 rounded-2xl hover:scale-105 transition-all duration-300 animate-fade-in relative group overflow-hidden"
+                className="bg-background/90 backdrop-blur-sm border border-border/50 p-8 rounded-2xl hover:scale-105 transition-all duration-300 animate-fade-in relative group overflow-hidden shadow-lg hover:shadow-xl"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 {/* Polkadot dots decoration */}
-                <div className="absolute -top-2 -right-2 w-20 h-20 bg-gradient-primary opacity-10 rounded-full blur-2xl" />
+                <div className="absolute -top-2 -right-2 w-20 h-20 bg-gradient-primary opacity-20 rounded-full blur-2xl" />
                 
-                <div className="absolute top-4 right-4 text-6xl font-bold text-primary/10 group-hover:text-primary/20 transition-colors">
+                <div className="absolute top-4 right-4 text-6xl font-bold text-primary/20 group-hover:text-primary/30 transition-colors">
                   {item.step}
                 </div>
                 <div className="bg-gradient-primary p-4 rounded-xl w-fit mb-6 shadow-glow">
                   <item.icon className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
-                <p className="text-muted-foreground">{item.description}</p>
+                <h3 className="text-2xl font-bold mb-3 text-foreground">{item.title}</h3>
+                <p className="text-muted-foreground/80">{item.description}</p>
               </div>
             ))}
           </div>
@@ -132,18 +182,27 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 relative">
+      <section className="pb-20 relative">
         <div className="container mx-auto px-4">
-          <div className="certificate-card p-12 rounded-3xl max-w-5xl mx-auto animate-fade-in relative overflow-hidden">
+          <div className="bg-background/95 backdrop-blur-sm border border-border/50 p-12 rounded-3xl max-w-5xl mx-auto animate-fade-in relative overflow-hidden shadow-xl">
             {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-primary opacity-5 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-secondary opacity-5 rounded-full blur-3xl" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-primary opacity-10 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-secondary opacity-10 rounded-full blur-3xl" />
             
             <div className="relative z-10">
               <div className="flex items-center justify-center gap-3 mb-8">
                 <Hexagon className="h-8 w-8 text-primary" />
                 <h2 className="text-4xl md:text-5xl font-bold text-center">
-                  Why <span className="gradient-text">Polkadot</span> for Certificates?
+                  Why{" "}
+                  <GradientText
+                    colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
+                    animationSpeed={5}
+                    showBorder={false}
+                    className="inline"
+                  >
+                    Polkadot
+                  </GradientText>{" "}
+                  for Certificates?
                 </h2>
               </div>
               <div className="grid md:grid-cols-2 gap-8">
@@ -168,8 +227,8 @@ export default function LandingPage() {
                   <div key={index} className="flex gap-4">
                     <div className="polkadot-dot mt-2 flex-shrink-0" />
                     <div>
-                      <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                      <p className="text-muted-foreground">{feature.description}</p>
+                      <h3 className="text-xl font-semibold mb-2 text-foreground">{feature.title}</h3>
+                      <p className="text-muted-foreground/80">{feature.description}</p>
                     </div>
                   </div>
                 ))}
@@ -180,35 +239,6 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 relative">
-        <div className="container mx-auto px-4">
-          <div className="bg-gradient-primary p-12 rounded-3xl max-w-4xl mx-auto text-center text-white animate-fade-in relative overflow-hidden">
-            {/* Certificate icon watermark */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10">
-              <FileCheck className="h-64 w-64" />
-            </div>
-            
-            <div className="relative z-10">
-              <div className="flex items-center justify-center gap-3 mb-6">
-                <Hexagon className="h-10 w-10" />
-                <h2 className="text-4xl md:text-5xl font-bold">
-                  Ready to Verify Your Certificates on Polkadot?
-                </h2>
-              </div>
-              <p className="text-xl mb-8 opacity-90">
-                Transform your credentials into blockchain-verified assets
-              </p>
-              <Link to="/mint">
-                <Button variant="glass" size="xl" className="bg-white/20 hover:bg-white/30 text-white border-white/30 gap-2">
-                  <FileCheck className="h-5 w-5" />
-                  Verify Certificate Now
-                  <ArrowRight className="h-5 w-5" />
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="border-t py-8">
