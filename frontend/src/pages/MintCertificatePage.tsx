@@ -265,6 +265,59 @@ export const MintCertificatePage: React.FC = () => {
       });
       const encrypytedFieldsIpfsUrl = await uploadBlobToIpfs(encryptedFieldsBlob);
       
+      debug.log('Building + uploading thumbnail image...');
+      const safeName =
+        `Certificate for ${account.slice(0, 6)}…${account.slice(-4)}`;
+
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512">
+          <defs>
+            <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0%" stop-color="#8b5cf6"/>
+              <stop offset="100%" stop-color="#14b8a6"/>
+            </linearGradient>
+          </defs>
+          <rect width="100%" height="100%" fill="black"/>
+          <rect x="32" y="32" width="448" height="448" rx="32" fill="url(#g)" opacity="0.25"/>
+          <g fill="#ddd">
+            <rect x="96" y="120" width="320" height="24" rx="4"/>
+            <rect x="96" y="170" width="280" height="18" rx="4"/>
+            <rect x="96" y="198" width="260" height="18" rx="4"/>
+            <rect x="96" y="226" width="300" height="18" rx="4"/>
+            <rect x="96" y="256" width="220" height="18" rx="4"/>
+            <rect x="96" y="284" width="240" height="18" rx="4"/>
+          </g>
+          <text x="50%" y="360" fill="#fff" font-size="24" text-anchor="middle" font-family="ui-sans-serif,system-ui,Segoe UI,Roboto">
+            ${safeName}
+          </text>
+        </svg>
+      `.trim();
+
+      const thumbBlob = new Blob([svg], { type: 'image/svg+xml' });
+      const thumbIpfsUrl = await uploadBlobToIpfs(thumbBlob);
+
+      debug.log('Building + uploading metadata JSON..');
+      const metadata = {
+        name: safeName,
+        description: 'Private, soulbound certificate NFT. Encrypted data included in properties.',
+        image: thumbIpfsUrl,
+        attributes: [
+          { trait_type: 'Type', value: 'Private Certificate' },
+          { trait_type: 'Soulbound', value: 'Yes'},
+        ],
+        properties: {
+          encrypted_pdf: encryptedPdfIpfsUrl,
+          encrypted_fields: encrypytedFieldsIpfsUrl,
+          merkle_root: certificateData.merkle_root,
+          merkle_version: 1,
+        },
+      };
+
+      const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
+      const metadataIpfsUrl = await uploadBlobToIpfs(metadataBlob);
+
+      debug.log('Requesting backend signature…');
+
       const backendBase =
         process.env.NODE_ENV === 'development'
           ? 'http://localhost:8000'
@@ -281,7 +334,7 @@ export const MintCertificatePage: React.FC = () => {
         },
         body: JSON.stringify({
           to: account,
-          tokenURI: encrypytedFieldsIpfsUrl.trim(),
+          tokenURI: metadataIpfsUrl.trim(),
           pdfHash: verificationHash,
           merkleRoot: certificateData.merkle_root,
           chainId: chainIdFromWallet,
@@ -304,7 +357,7 @@ export const MintCertificatePage: React.FC = () => {
       debug.log('Calling smart contract mintWithIssuerSing...');
       const tx = await contractService.mintWithIssuerSig(
         account,
-        encrypytedFieldsIpfsUrl.trim(),
+        metadataIpfsUrl.trim(),
         verificationHash,
         certificateData.merkle_root,
         finalDeadline,

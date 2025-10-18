@@ -27,23 +27,18 @@ const CONTRACT_ABI = [
 ];
 
 // Contract configuration
-export const CONTRACT_ADDRESS = '0xe043B560F711dE2d43702A804223504E60CFA488';
+export const CONTRACT_ADDRESS = '0x67deeAcfA815903f48605d85B5279D9c729969B0';
 
 // Network configuration for Polkadot Paseo Passethub
 const NETWORK_CONFIG = {
-  chainId: '0x1a4', // 420 in decimal for Paseo Passethub
-  chainName: 'Paseo Passethub',
-  nativeCurrency: {
-    name: 'ETH',
-    symbol: 'ETH',
-    decimals: 18,
-  },
-  rpcUrls: ['https://rpc-paseo.polkadot.tech'],
-  blockExplorerUrls: ['https://paseo.polkadot.tech'],
+  chainId: '0x190f1b46', // 420 in decimal for Paseo Passethub
+  name: 'Passet Hub',
+  rpc: ['https://testnet-passet-hub-eth-rpc.polkadot.io/'],
+  blockExplorer: ['https://blockscout-passet-hub.parity-testnet.parity.io/'],
 };
 
 // Alternative chain IDs that might be used for Paseo Passethub
-const VALID_CHAIN_IDS = ['0x1a4', '420', 420];
+const VALID_CHAIN_IDS = ['0x190f1b46', '420420422', 420420422];
 
 export class ContractService {
   private readContract: ethers.Contract;
@@ -108,6 +103,8 @@ export class ContractService {
         signature
       );
 
+      console.log("tokenURI:", tokenURI);
+
       const GAS_LIMIT = 500_000n;
       const tx = await write.mintWithIssuerSig(
         userAddress,
@@ -142,7 +139,7 @@ export class ContractService {
   }
 
   buildTxUrl(txHash: string): string | null {
-    const base = NETWORK_CONFIG.blockExplorerUrls?.[0];
+    const base = NETWORK_CONFIG.blockExplorer?.[0];
     if (!base) return null;
     return `${base.replace(/\/$/, '')}/tx/${txHash}`;
   }
@@ -205,7 +202,7 @@ export class ContractService {
       throw new Error('No Web3 provider found');
     }
 
-    debug.log('ContractService: Attempting to switch to network:', NETWORK_CONFIG.chainName);
+    debug.log('ContractService: Attempting to switch to network:', NETWORK_CONFIG.name);
 
     try {
       await ethereum.request({
