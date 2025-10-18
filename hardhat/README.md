@@ -157,52 +157,6 @@ npx hardhat ignition deploy ./ignition/modules/CertificateViewNFT.ts \
 
 ---
 
-## Verify basic interactions
-
-Open a Hardhat console:
-
-```bash
-npx hardhat console --network localhost
-```
-
-Then:
-
-```js
-const priv = await ethers.getContractAt("CertificatePrivateNFT", "<PRIVATE_NFT_ADDRESS>");
-
-// Owner-only mint
-const to = (await ethers.getSigners())[0].address;
-const tokenURI = "ipfs://QmPrivateCertificateJson";
-const pdfHash = ethers.zeroPadValue(ethers.id("pdf-bytes"), 32);
-const merkleRoot = ethers.zeroPadValue(ethers.id("root-bytes"), 32);
-
-(await priv.mintCertificate(to, tokenURI, pdfHash, merkleRoot)).hash;
-
-// Readbacks
-(await priv.tokenURI(1));
-(await priv.rootOf(1));
-(await priv.locked(1));  // true
-```
-
-For the **View NFT** (after deploying and linking to the private NFT):
-
-```js
-const view = await ethers.getContractAt("CertificateViewNFT", "<VIEW_NFT_ADDRESS>");
-
-const signer = (await ethers.getSigners())[0];
-const fieldsIpfs = "ipfs://QmSelectedFieldsJson";
-const certId = 1;
-const expiresAt = Math.floor(Date.now()/1000) + 3600; // 1 hour
-
-// Only the certificate **owner** can mint a view NFT
-(await view.connect(signer).mintViewNFT(signer.address, certId, fieldsIpfs, expiresAt)).hash;
-
-// tokenURI() reverts with ViewExpired after expiry
-(await view.tokenURI(1)); // ok now
-```
-
----
-
 ## EIP‑712 issuer‑signed mint flow
 
 `CertificatePrivateNFT` supports a trust‑minimized mint where the contract **owner (issuer)** signs a typed data payload off‑chain and anyone can submit it via `mintWithIssuerSig` until `deadline`.
@@ -220,50 +174,6 @@ const expiresAt = Math.floor(Date.now()/1000) + 3600; // 1 hour
    - `deadline` (unix timestamp)
 2. Issuer signs the struct using EIP‑712.
 3. Anyone calls `mintWithIssuerSig(to, tokenURI, pdfHash, merkleRoot, deadline, signature)`.
-
-**Example (Hardhat script snippet):**
-
-```js
-import { ethers } from "hardhat";
-import { keccak256, toUtf8Bytes } from "ethers";
-
-const contract = await ethers.getContractAt("CertificatePrivateNFT", "<PRIVATE_NFT_ADDRESS>");
-const [issuer, recipient] = await ethers.getSigners();
-
-const tokenURI = "ipfs://QmPrivateCertificateJson";
-const pdfHash = ethers.zeroPadValue(ethers.id("pdf-raw-bytes"), 32);
-const merkleRoot = ethers.zeroPadValue(ethers.id("root-bytes"), 32);
-const deadline = Math.floor(Date.now()/1000) + 600;
-
-const domain = { name: "CertificateNFT", version: "1", chainId: 31337, verifyingContract: await contract.getAddress() };
-const types = {
-  Mint: [
-    { name: "to", type: "address" },
-    { name: "tokenURIHash", type: "bytes32" },
-    { name: "pdfHash", type: "bytes32" },
-    { name: "merkleRoot", type: "bytes32" },
-    { name: "deadline", type: "uint256" },
-  ],
-};
-
-const value = {
-  to: recipient.address,
-  tokenURIHash: keccak256(toUtf8Bytes(tokenURI)),
-  pdfHash,
-  merkleRoot,
-  deadline,
-};
-
-const sig = await issuer.signTypedData(domain, types, value);
-
-await contract.connect(recipient).mintWithIssuerSig(
-  recipient.address, tokenURI, pdfHash, merkleRoot, deadline, sig
-);
-```
-
-> The contract prevents replay with `usedDigest[digest]` and disallows reusing the same `pdfHash` across tokens.
-
----
 
 ## Contract reference
 

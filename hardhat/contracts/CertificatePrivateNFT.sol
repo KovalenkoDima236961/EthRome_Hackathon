@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
@@ -10,7 +11,7 @@ import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/Sig
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC5192 } from "./interfaces/IERC5192.sol";
 
-contract CertificatePrivateNFT is ERC721URIStorage, Ownable, IERC5192, EIP712 {
+contract CertificatePrivateNFT is ERC721URIStorage, ERC721Enumerable, Ownable, IERC5192, EIP712 {
     // Errors
     error AuthExpired();
     error PdfAlreadyUsed();
@@ -143,7 +144,7 @@ contract CertificatePrivateNFT is ERC721URIStorage, Ownable, IERC5192, EIP712 {
         address to,
         uint256 tokenId,
         address auth
-    ) internal override returns (address) {
+    ) internal override(ERC721, ERC721Enumerable) returns (address) {
         address from = _ownerOf(tokenId);
         if (from != address(0) && to != address(0)) revert Soulbound();
         return super._update(to, tokenId, auth);
@@ -194,7 +195,7 @@ contract CertificatePrivateNFT is ERC721URIStorage, Ownable, IERC5192, EIP712 {
 
     function supportsInterface(
         bytes4 interfaceId
-    ) public view override returns (bool) {
+    ) public view override(ERC721, ERC721Enumerable) returns (bool) {
         return
             interfaceId == type(IERC5192).interfaceId ||
             super.supportsInterface(interfaceId);
