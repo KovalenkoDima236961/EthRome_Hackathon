@@ -1,12 +1,16 @@
-import { buildModule } from "@nomicfoundation/hardhat-ignition/modules"
+import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 const CertificateViewNFTModule = buildModule("CertificateViewNFTModule", (m) => {
-    const certificateViewName = "QualifyProView";
+  const certificateViewName = m.getParameter("certificateViewName", "QualifyProView");
 
-    const certificateNft = m.contract("CertificateViewNFT", [certificateViewName]);
+  const certificatePrivateAddress = m.getParameter("certificatePrivateAddress");
 
-    return { certificateNft }
-})
+  const certificateViewNft = m.contract("CertificateViewNFT", [
+    certificateViewName,
+    certificatePrivateAddress,
+  ]);
 
+  return { certificateViewNft };
+});
 
 export default CertificateViewNFTModule;

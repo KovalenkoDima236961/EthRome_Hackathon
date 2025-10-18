@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC712/extensions/ERC721URIStorage.sol";
+import { ERC721URIStorage } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -20,6 +20,7 @@ contract CertificateViewNFT is ERC721URIStorage, Ownable, IERC5192 {
     error NoRootForCertificate();
     error NotAllowedToBurnYet();
     error Soulbound();
+    error NonexistentToken();
 
     // variables
     struct ViewInfo {
