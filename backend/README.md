@@ -1,216 +1,266 @@
-# Udemy Certificate Verifier – Backend (FastAPI)
+# Certificate Verifier & Signer (FastAPI)
 
-A FastAPI backend that:
-1) extracts fields (certificate ID, course name, instructor, user name) from a **Udemy certificate PDF** using OCR, and  
-2) verifies them against the **official Udemy certificate page** via Selenium.
+FastAPI backend that:
 
-> ⚠️ This README also points out a few code fixes you should apply (typos & missing imports) to make the app run smoothly.
+1) Extracts **Udemy certificate** fields (name, course, certificate ID) from a **PDF** using OCR.
+2) Verifies the fields by scraping the public Udemy certificate page.
+3) Builds a **Merkle tree** over extracted fields and returns **field proofs**.
+4) Signs an **EIP‑712** `Mint` payload for a Certificate NFT using an **issuer private key**.
 
----
-
-## ✨ Features
-
-- **PDF → OCR** using `pdf2image`, `pytesseract`, `opencv-python`, and `Pillow`
-- **Robust course title extraction** from common Udemy certificate layouts
-- **Verification** against Udemy certificate page with **Selenium + Chrome (headless)**
-- Simple REST API:
-  - `GET /api/health` → returns `"good"`
-  - `POST /api/verify_certificate` → accepts a certificate PDF and returns verification status + extracted fields
+> CORS is enabled for `http://localhost:5173`, so you can plug this into a local frontend during development.
 
 ---
 
-## 🧱 Project Structure (suggested)
+## Table of contents
+- [Architecture](#architecture)
+- [Folder structure](#folder-structure)
+- [Prerequisites](#prerequisites)
+- [Quick start](#quick-start)
+- [Environment variables](#environment-variables)
+- [API](#api)
+  - [GET /api/health](#get-apihealth)
+  - [POST /api/verify_certificate](#post-apiverify_certificate)
+  - [POST /api/sign-mint](#post-apisign-mint)
+- [How verification works](#how-verification-works)
+- [Merkle construction](#merkle-construction)
+- [Security notes](#security-notes)
+- [Troubleshooting](#troubleshooting)
+- [Development tips](#development-tips)
+- [License](#license)
+
+---
+
+## Architecture
+
+- **FastAPI** app (`main.py`) exposes three endpoints.
+- **OCR** via `pytesseract` + `pdf2image` + `opencv` extracts text from the certificate PDF.
+- **Web scraping** via **Selenium** (headless Chrome) fetches the **recipient name** and **course name** from Udemy’s public certificate page.
+- **Merkle Tree** over the extracted fields is built with deterministic hashing + 32‑byte random per‑field salts.
+- **EIP‑712 signing** (`/api/sign-mint`) produces a 65‑byte secp256k1 signature for an off‑chain authorize‑to‑mint flow.
+
+---
+
+## Folder structure
+
 ```
 .
-├── main.py                         # FastAPI app entrypoint
-├── routes.py                       # API router (health + verify_certificate endpoints)
-├── certificate_extraction.py       # OCR utilities: extract parts, fields, parse text
-├── certificate_extraction_fields.py# (optional) scraping helpers, or keep `scrap_udemy` here
-├── README.md
-└── requirements.txt                # (recommended) Python dependencies
+├─ main.py
+├─ models.py
+├─ routes.py
+├─ .env                   # not committed – see sample below
+├─ utils/
+│  ├─ main_util.py
+│  ├─ sign.py
+│  ├─ cryptographic_operation.py
+│  ├─ certificate_extraction_fields.py
+│  └─ web_scrapper_udemy.py
+└─ README.md
 ```
-
-> In your current code sample, `scrap_udemy` appears twice: once as an import and once as a function definition.  
-> **Choose one place** for it (e.g., keep it in `certificate_extraction_fields.py`) and import it from there.
 
 ---
 
-## 🐍 Requirements
+## Prerequisites
 
-- **Python** 3.10+
-- **Tesseract OCR** (binary) – required by `pytesseract`
-- **Poppler** – required by `pdf2image` to rasterize PDFs
-- **Google Chrome / Chromium** + **matching ChromeDriver** (for Selenium)
+### System packages
+You need these native deps for OCR and PDF rasterization, plus Selenium:
 
-### Debian/Ubuntu
-```bash
-sudo apt-get update
-sudo apt-get install -y tesseract-ocr poppler-utils
-# Chrome (choose ONE of Chrome or Chromium)
-# For Google Chrome stable:
-wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
-# OR for Chromium:
-# sudo apt-get install -y chromium-browser
-```
+- **Tesseract OCR**
+- **Poppler** (for `pdf2image` to rasterize PDFs)
+- **Google Chrome** (or Chromium)
+- **ChromeDriver** matching your Chrome version
 
-### macOS (Homebrew)
+#### macOS (Homebrew)
 ```bash
 brew install tesseract poppler
 brew install --cask google-chrome
+# If needed: brew install --cask chromedriver
 ```
 
-> If the server runs in CI/containers, consider using `undetected-chromedriver` or `webdriver-manager` to auto-manage the driver. See **Selenium notes** below.
+#### Ubuntu/Debian
+```bash
+sudo apt update
+sudo apt install -y tesseract-ocr poppler-utils
+# Install Chrome
+wget -qO- https://dl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/google-linux-signing-keyring.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-linux-signing-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+sudo apt update && sudo apt install -y google-chrome-stable
+# Install matching ChromeDriver (adjust VERSION to your Chrome)
+CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d. -f1)
+LATEST=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_${CHROME_VERSION})
+wget https://storage.googleapis.com/chrome-for-testing-public/${LATEST}/linux64/chromedriver-linux64.zip
+unzip chromedriver-linux64.zip
+sudo mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+sudo chmod +x /usr/local/bin/chromedriver
+```
 
----
+> If sites detect Selenium, consider using `undetected-chromedriver` or a cloud scraper. For now this project uses plain Selenium with a mobile user-agent.
 
-## 📦 Python dependencies
+### Python
+- Python **3.10+** recommended
 
-Create a virtual environment and install libs:
+Create a virtual environment and install packages:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install --upgrade pip
-pip install fastapi uvicorn[pstandard] pillow pytesseract pdf2image opencv-python numpy selenium python-dotenv
+pip install -r requirements.txt
 ```
 
-> If you plan to use driver auto-management:  
-> `pip install webdriver-manager` or `pip install undetected-chromedriver`
+## Quick start
 
-Recommended `requirements.txt`:
+1) **Clone** this repo and ensure the folder structure matches the tree above.
+2) Create **`.env`** (see next section).
+3) Install **system** dependencies (Tesseract, Poppler, Chrome, ChromeDriver).
+4) Install **Python** dependencies.
+5) Run the API:
+   ```bash
+   uvicorn main:app --reload
+   ```
+   The server will listen on `http://127.0.0.1:8000` by default.
+
+> CORS allows `http://localhost:5173` by default (configured in `main.py`).
+
+---
+
+## Environment variables
+
+Create a `.env` file **one level above** your `main.py` (as `main.py` loads `../.env`):
+
+```dotenv
+# Private key of the **issuer** EOA used to sign EIP-712 Mint messages
+ISSUER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HEX
 ```
-fastapi
-uvicorn[pstandard]
-pillow
-pytesseract
-pdf2image
-opencv-python
-numpy
-selenium
-python-dotenv
-# Optional helpers:
-# webdriver-manager
-# undetected-chromedriver
+
+- Use a **dedicated** issuer wallet with minimal on-chain funds.
+- Never commit `.env` to version control.
+
+---
+
+## API
+
+### GET `/api/health`
+Returns a plain string – useful for liveness checks.
+
+**Response (200):**
+```text
+good
 ```
 
 ---
 
-## ⚙️ Environment Variables
+### POST `/api/verify_certificate`
 
-Create a `.env` file (or set vars in your process manager):
-
-```
-# Example Udemy certificate base link
-UDEMY_LINK=https://www.udemy.com/certificate/UC-
-# CORS: adjust if your frontend is not on localhost:5173
-FRONTEND_ORIGIN=http://localhost:5173
-ISSUER_PRIVATE_KEY=
-```
-
-In code you read the base link and then append the certificate ID + trailing slash:  
-`https://www.udemy.com/certificate/UC-<ID>/`
-
----
-
-## ▶️ Running the Server (local dev)
-
-### 1) Set env vars
-```bash
-cp .env.example .env   # if you keep an example file
-# then edit UDEMY_LINK etc.
-```
-
-### 2) Start API
-```bash
-uvicorn main:app --reload --port 8000
-# Server at: http://localhost:8000
-```
-
-> The provided code uses CORS to allow `http://localhost:5173` (Vite dev server).  
-> Update `allow_origins` if your frontend runs elsewhere.
-
----
-
-## 🌐 REST API
-
-### Health
-`GET /api/health` → `"good"`
-
-```bash
-curl -s http://localhost:8000/api/health
-```
-
-### Verify Certificate
-`POST /api/verify_certificate` (multipart/form-data) with a `file` field containing a Udemy certificate **PDF**.
+**Description**: Accepts a PDF file of a Udemy certificate, OCRs the document, infers key fields, scrapes the public Udemy certificate page, builds a Merkle tree over extracted fields, and returns verification + proofs.
 
 **Request**
-```bash
-curl -X POST "http://localhost:8000/api/verify_certificate" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@/path/to/udemy_certificate.pdf"
-```
+- `multipart/form-data` with field `file: <PDF>`
 
-**Successful Response (example)**
+**Response (200)**
 ```json
 {
   "is_verified": true,
   "fields": {
-    "Certificate ID": "UC-ABCD-EFGH-IJKL",
+    "Certificate ID": "UC-XXXXXX-XXXXXX-XXXXXX-XXXX",
     "Instructor": "Jane Doe",
-    "Course Name": "Modern Python: From Zero to Expert",
+    "Course Name": "Mastering Something Great",
     "User Name & Surname": "John Smith"
   },
-  "certificate_url": "https://www.udemy.com/certificate/UC-ABCD-EFGH-IJKL/"
+  "merkle_root": "0x...64hex...",
+  "merkle_salts": {
+    "Certificate ID": "0x...32bytes...",
+    "Instructor": "0x...32bytes...",
+    "Course Name": "0x...32bytes...",
+    "User Name & Surname": "0x...32bytes..."
+  },
+  "field_proofs": {
+    "Certificate ID": { "salt": "0x...", "proof": ["0x...", "..."] },
+    "Instructor":     { "salt": "0x...", "proof": ["0x...", "..."] },
+    "Course Name":    { "salt": "0x...", "proof": ["0x...", "..."] },
+    "User Name & Surname": { "salt": "0x...", "proof": ["0x...", "..."] }
+  }
 }
 ```
 
-**Failure Response (example)**
+**Errors**
+- `400` – Empty file
+- `500` – OCR/scrape/processing error
+
+---
+
+### POST `/api/sign-mint`
+
+**Description**: Returns an EIP‑712 signature authorizing a mint with fields hashed into the payload.
+
+**Request (JSON)**
 ```json
 {
-  "detail": "An error occurred during processing: UDEMY_LINK environment variable is not set."
+  "to": "0xRecipientAddress",
+  "tokenURI": "ipfs://bafy.../metadata.json",
+  "pdfHash": "0x...64hex",
+  "merkleRoot": "0x...64hex",
+  "deadline": 1734547200,      // optional; defaults to now+600s
+  "chainId": 11155111,
+  "contract_address": "0xVerifyingContract"
 }
 ```
 
+**Response (200)**
+```json
+{
+  "signature": "0x...130hex...",
+  "deadline": 1734547200
+}
+```
+
+**Validations**
+- `to` must be a **checksum** address.
+- `pdfHash` and `merkleRoot` must be **bytes32** (`0x` + 64 hex).
+- `chainId` is required.
+- Signature is **self‑verified** by recovering the signer and matching your `ISSUER_PRIVATE_KEY` address; if mismatch, returns 500.
+
 ---
 
-## 🧠 How It Works (high level)
+## How verification works
 
-1. **PDF → Image(s)** via `pdf2image.convert_from_bytes(dpi=400)`  
-2. **Certificate ID** is OCR’d by cropping fixed regions where Udemy places the code blocks, then concatenating parts.  
-3. **Text OCR** over the full page extracts:
-   - **User Name** (regex for “Firstname Lastname”)
-   - **Instructor(s)** (lines after “Instructor(s)”)
-   - **Course Name** (heuristics around “has successfully completed” and breaker lines)  
-4. **Verification**: uses `UDEMY_LINK` + `<CERT_ID>/` to open Udemy certificate page in headless Chrome and scrape:
-   - Recipient name
-   - Course title  
-   Then compares them with OCR’d values → `is_verified`.
+1) **PDF → Image**: `pdf2image.convert_from_bytes(..., dpi=400)` rasterizes page 1.
+2) **Certificate ID**: `extract_certificate_parts(...)` crops known regions of the Udemy PDF and OCRs them into segments, then joins into the final ID.
+3) **Text mining**: `extract_certificate_fields(...)` uses OCR text + heuristics to infer **Instructor**, **Course Name**, and **User Name & Surname**.
+4) **Scraping**: `utils/web_scrapper_udemy.py` opens the public Udemy certificate page and reads the **certificate-recipient-url** and **certificate-course-url** text nodes.
+5) **Compare**: If the OCR’d **name** and **course** equal the scraped values, `is_verified = true`.
+6) **Merkle**: `utils/cryptographic_operation.py` canonicalizes key/value pairs, salts each leaf (32 bytes), and builds a binary Merkle tree (tagged leaves/nodes) returning the **root** and **proofs**.
 
 ---
 
-## 🧪 Troubleshooting
+## Merkle construction
 
-- **Tesseract not found**: ensure `tesseract` is installed and on PATH. On Linux, `which tesseract` should work.
-- **pdf2image errors**: install `poppler` (`pdftoppm` must be present).
-- **Selenium / ChromeDriver**:
-  - Ensure Chrome/Chromium is installed and the driver matches its version.
-  - If matching is painful, use one of:
-    - `webdriver-manager`:
-      ```python
-      from selenium.webdriver.chrome.service import Service
-      from webdriver_manager.chrome import ChromeDriverManager
-      driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-      ```
-    - `undetected-chromedriver`:
-      ```python
-      import undetected_chromedriver as uc
-      driver = uc.Chrome(options=options, headless=True)
-      ```
-- **OCR quality**: try different DPI (300–400), adaptive thresholding, or tweak `--psm`.
-- **CORS**: update `allow_origins` in `main.py` for your frontend origin.
+- Leaf preimage: `LEAF_TAG (0x01) || keccak(path) || keccak(canonical(value)) || salt32`
+- Node preimage: `NODE_TAG (0x02) || sort(left, right) || concat`
+- Hash function: `keccak256`
+- Canonicalization:
+  - strings as-is
+  - numbers to decimal string
+  - booleans to `true`/`false`
+  - lists/dicts serialized deterministically (sorted keys)
+  - `null` for missing
 
-## 📄 License
+Returned values:
+- `merkle_root`: `0x` + 64 hex
+- `merkle_salts[path]`: `0x` + 64 hex (one per field)
+- `field_proofs[path]`: `{ salt, proof[] }` with sibling hashes bottom→top
 
-MIT
+---
 
+## Development tips
+
+- Run locally:
+  ```bash
+  uvicorn main:app --reload
+  ```
+- Default CORS origin is `http://localhost:5173` (Vite). Add more origins in `main.py` if needed.
+- Logs from Selenium are printed to the console; adapt to `logging` if desired.
+- For production, run behind a proper ASGI server (e.g., `uvicorn` with workers, or `gunicorn -k uvicorn.workers.UvicornWorker`).
+
+---
+
+## License
