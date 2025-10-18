@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Tuple
 
 from web3 import Web3
 
+w3 = Web3()
+
 TAG_LEAF = b"\x01"
 TAG_NODE = b"\x02"
 
