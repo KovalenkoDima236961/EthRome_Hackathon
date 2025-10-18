@@ -8,6 +8,11 @@ w3 = Web3()
 TAG_LEAF = b"\x01"
 TAG_NODE = b"\x02"
 
+
+def keccak_bytes32_hex(s: str) -> str:
+    return "0x" + w3.keccak(text=s).hex()
+
+
 def _keccak_bytes(x: bytes) -> bytes:
     return w3.keccak(x)
 

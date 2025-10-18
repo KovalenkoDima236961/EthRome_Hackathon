@@ -6,7 +6,7 @@ import { StepIndicator } from '../components/StepIndicator';
 import { Alert } from '../components/Alert';
 import { WalletInstructions } from '../components/WalletInstructions';
 import { useWeb3 } from '../contexts/Web3Context';
-import { ContractService } from '../services/contractService';
+import { CONTRACT_ADDRESS, ContractService } from '../services/contractService';
 import { CertificateService } from '../services/certificateService';
 import type { CertificateVerificationResponse } from '../types/certificate';
 import { generatePdfHash, type Json } from '../utils/pdfUtils';
@@ -27,6 +27,8 @@ export const MintCertificatePage: React.FC = () => {
   const [certificateData, setCertificateData] = useState<CertificateVerificationResponse | null>(null);
   const [isMinting, setIsMinting] = useState(false);
   const [isOnChainMint, setIsOnChainMint] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [txUrl, setTxUrl] = useState<string | null>(null);
 
   // Check if Talisman is available
   const wallets = detectWallets();
@@ -192,6 +194,8 @@ export const MintCertificatePage: React.FC = () => {
   };
 
   const handleOnChainMint = async () => {
+    setTxHash(null);
+    setTxUrl(null);
     if (!uploadedFile) {
       setError('No certificate file to mint.');
       return;
@@ -267,6 +271,9 @@ export const MintCertificatePage: React.FC = () => {
           : 'https://your-backend-url.com';
 
       const signUrl = `${backendBase}/api/sign-mint`;
+      const net = await provider.getNetwork();
+      const chainIdFromWallet = Number(net.chainId);
+
       const signRes = await fetch(signUrl, {
         method: 'POST',
         headers: {
@@ -275,8 +282,10 @@ export const MintCertificatePage: React.FC = () => {
         body: JSON.stringify({
           to: account,
           tokenURI: encrypytedFieldsIpfsUrl.trim(),
-          verificationHash,
-          merkle_root: certificateData.merkle_root,
+          pdfHash: verificationHash,
+          merkleRoot: certificateData.merkle_root,
+          chainId: chainIdFromWallet,
+          contract_address: CONTRACT_ADDRESS
         }),
       });
 
@@ -293,7 +302,7 @@ export const MintCertificatePage: React.FC = () => {
       const finalDeadline = BigInt(deadline);
 
       debug.log('Calling smart contract mintWithIssuerSing...');
-      const result = await contractService.mintWithIssuerSig(
+      const tx = await contractService.mintWithIssuerSig(
         account,
         encrypytedFieldsIpfsUrl.trim(),
         verificationHash,
@@ -301,8 +310,9 @@ export const MintCertificatePage: React.FC = () => {
         finalDeadline,
         signature
       );
-      debug.log('Mint result:', result);
 
+      setTxHash(tx.hash);
+      setTxUrl(contractService.buildTxUrl(tx.hash))
       setError(null);
 
       alert('Certificate Minted');
@@ -356,6 +366,27 @@ export const MintCertificatePage: React.FC = () => {
               message={error}
               onClose={() => setError(null)}
             />
+          </div>
+        )}
+
+        {/* Tx hash display */}
+        {txHash && (
+          <div className="max-w-2xl mx-auto mb-6">
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-1">Mint transaction submitted:</p>
+              <p className="text-white font-mono text-sm break-all">{txHash}</p>
+              {txUrl && (
+                <a
+                  href={txUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center mt-3 text-purple-300 hover:text-purple-200 underline"
+                >
+                  View on Explorer
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </a>
+              )}
+            </div>
           </div>
         )}
 

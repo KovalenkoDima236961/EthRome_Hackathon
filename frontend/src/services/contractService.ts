@@ -27,7 +27,7 @@ const CONTRACT_ABI = [
 ];
 
 // Contract configuration
-const CONTRACT_ADDRESS = '0xe043B560F711dE2d43702A804223504E60CFA488';
+export const CONTRACT_ADDRESS = '0xe043B560F711dE2d43702A804223504E60CFA488';
 
 // Network configuration for Polkadot Paseo Passethub
 const NETWORK_CONFIG = {
@@ -46,12 +46,12 @@ const NETWORK_CONFIG = {
 const VALID_CHAIN_IDS = ['0x1a4', '420', 420];
 
 export class ContractService {
-  private contract: ethers.Contract;
+  private readContract: ethers.Contract;
   private provider: ethers.BrowserProvider;
 
   constructor(provider: ethers.BrowserProvider) {
     this.provider = provider;
-    this.contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    this.readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
   }
 
   /**
@@ -67,7 +67,7 @@ export class ContractService {
       debug.log('ContractService: Hash as bytes32:', hashBytes32);
       
       debug.log('ContractService: Calling contract method...');
-      const result = await this.contract.isPdfHashUsed(hashBytes32);
+      const result = await this.readContract.isPdfHashUsed(hashBytes32);
       debug.log('ContractService: Contract returned:', result);
       
       return result;
@@ -94,39 +94,57 @@ export class ContractService {
     merkleRoot: string,
     finalDeadline: bigint,
     signature: string
-  ): Promise<bigint | string> {
+  ): Promise<ethers.TransactionResponse> {
     try {
-      debug.log('ContractService: Minting NFT with issuer sig:', signature);
-      debug.log('ContractService: Contract address:', CONTRACT_ADDRESS);
+      const signer = await this.provider.getSigner();
+      const write = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-      const hashBytes32 = ethers.getBytes(pdfHash);
-      debug.log('ContractService: Hash as bytes32:', hashBytes32)
-
-      debug.log('ContractService: Calling contract method...');
-      const result = await this.contract.mintWithIssuerSig(
+      await write.mintWithIssuerSig.staticCall(
         userAddress,
         tokenURI,
-        hashBytes32,
+        pdfHash,
         merkleRoot,
-        finalDeadline
+        finalDeadline,
+        signature
       );
-      debug.log('ContractService: Contract returned:', result);
 
-      return result;
+      const GAS_LIMIT = 500_000n;
+      const tx = await write.mintWithIssuerSig(
+        userAddress,
+        tokenURI,
+        pdfHash,
+        merkleRoot,
+        finalDeadline,
+        signature,
+        { gasLimit: GAS_LIMIT }
+      );
+      debug.log('mintWithIssuerSig tx:', tx.hash);
+
+      return tx;
     } catch (error: any) {
-      debug.error('ContractService: Error checking PDF hash:', error);
-      
-      // Provide more specific error information
-      if (error.code === 'NETWORK_ERROR') {
-        throw new Error('Network error: Unable to connect to blockchain');
-      } else if (error.code === 'CALL_EXCEPTION') {
-        throw new Error('Smart contract call failed: ' + error.reason);
-      } else if (error.message?.includes('revert')) {
-        throw new Error('Smart contract execution reverted: ' + error.message);
-      } else {
-        throw new Error(`Failed to check PDF hash on blockchain: ${error.message || 'Unknown error'}`);
+      const msg = String(error?.message || error?.shortMessage || '');
+
+      if (/AuthExpired/i.test(msg))        throw new Error('Authorization expired. Please request a new signature.');
+      if (/PdfAlreadyUsed/i.test(msg))     throw new Error('This certificate hash has already been minted.');
+      if (/SigAlreadyUsed/i.test(msg))     throw new Error('This signature has already been used.');
+      if (/InvalidIssuerSignature/i.test(msg))
+        throw new Error('Issuer signature invalid. Ensure the backend signs with the contract owner key and the same chainId/address.');
+
+      if (error?.code === 'CALL_EXCEPTION' && /estimateGas/i.test(msg)) {
+        throw new Error('Transaction simulation failed (gas estimate). Usually this means the signature/domain or inputs don’t match the contract. Double-check chainId, contract address, and EIP-712 name/version.');
       }
+      if (error?.code === 'UNSUPPORTED_OPERATION' && /sendTransaction/i.test(msg)) {
+        throw new Error('Your wallet cannot send EVM txs on this network. Use an EVM provider (MetaMask / Talisman EVM) connected to Paseo.');
+      }
+
+      throw new Error(`Failed to send mint transaction: ${msg || 'Unknown error'}`);
     }
+  }
+
+  buildTxUrl(txHash: string): string | null {
+    const base = NETWORK_CONFIG.blockExplorerUrls?.[0];
+    if (!base) return null;
+    return `${base.replace(/\/$/, '')}/tx/${txHash}`;
   }
 
   /**

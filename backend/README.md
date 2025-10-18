@@ -19,9 +19,25 @@ A FastAPI backend that:
 
 ---
 
+## 🧱 Project Structure (suggested)
+```
+.
+├── main.py                         # FastAPI app entrypoint
+├── routes.py                       # API router (health + verify_certificate endpoints)
+├── certificate_extraction.py       # OCR utilities: extract parts, fields, parse text
+├── certificate_extraction_fields.py# (optional) scraping helpers, or keep `scrap_udemy` here
+├── README.md
+└── requirements.txt                # (recommended) Python dependencies
+```
+
+> In your current code sample, `scrap_udemy` appears twice: once as an import and once as a function definition.  
+> **Choose one place** for it (e.g., keep it in `certificate_extraction_fields.py`) and import it from there.
+
+---
+
 ## 🐍 Requirements
 
-- **Python** 3.12
+- **Python** 3.10+
 - **Tesseract OCR** (binary) – required by `pytesseract`
 - **Poppler** – required by `pdf2image` to rasterize PDFs
 - **Google Chrome / Chromium** + **matching ChromeDriver** (for Selenium)
@@ -62,6 +78,23 @@ pip install fastapi uvicorn[pstandard] pillow pytesseract pdf2image opencv-pytho
 > If you plan to use driver auto-management:  
 > `pip install webdriver-manager` or `pip install undetected-chromedriver`
 
+Recommended `requirements.txt`:
+```
+fastapi
+uvicorn[pstandard]
+pillow
+pytesseract
+pdf2image
+opencv-python
+numpy
+selenium
+python-dotenv
+# Optional helpers:
+# webdriver-manager
+# undetected-chromedriver
+```
+
+---
 
 ## ⚙️ Environment Variables
 
@@ -72,10 +105,13 @@ Create a `.env` file (or set vars in your process manager):
 UDEMY_LINK=https://www.udemy.com/certificate/UC-
 # CORS: adjust if your frontend is not on localhost:5173
 FRONTEND_ORIGIN=http://localhost:5173
+ISSUER_PRIVATE_KEY=
 ```
 
 In code you read the base link and then append the certificate ID + trailing slash:  
 `https://www.udemy.com/certificate/UC-<ID>/`
+
+---
 
 ## ▶️ Running the Server (local dev)
 
@@ -124,7 +160,8 @@ curl -X POST "http://localhost:8000/api/verify_certificate" \
     "Instructor": "Jane Doe",
     "Course Name": "Modern Python: From Zero to Expert",
     "User Name & Surname": "John Smith"
-  }
+  },
+  "certificate_url": "https://www.udemy.com/certificate/UC-ABCD-EFGH-IJKL/"
 }
 ```
 
@@ -173,7 +210,7 @@ curl -X POST "http://localhost:8000/api/verify_certificate" \
 - **OCR quality**: try different DPI (300–400), adaptive thresholding, or tweak `--psm`.
 - **CORS**: update `allow_origins` in `main.py` for your frontend origin.
 
----
-
 ## 📄 License
+
 MIT
+
