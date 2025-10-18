@@ -1,6 +1,8 @@
 import io
 from typing import Dict, Any
 from fastapi import APIRouter, File, Request, UploadFile, HTTPException
+from utils.cryptographic_operation import build_merkle_proofs, build_tree
+from utils.main_util import verify_certificate
 
 router = APIRouter()
 
@@ -31,9 +33,15 @@ async def verify_certificate_endpoint(
         
         fields_dict: Dict[str, Any] = result["fields"]
 
+        merkle_root, merkle_salts, _, _ = build_tree(fields_dict)
+        field_proofs = build_merkle_proofs(fields_dict, list(fields_dict.keys()), merkle_salts)
+
         return {
             "is_verified": bool(result.get("is_verified")),
             "fields": fields_dict,
+            "merkle_root": merkle_root,
+            "merkle_salts": merkle_salts,
+            "field_proofs": field_proofs
         }
     except HTTPException:
         raise
