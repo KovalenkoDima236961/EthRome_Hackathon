@@ -35,7 +35,8 @@ export const Navigation: React.FC = () => {
               </span>
             </Link>
 
-            <div className="hidden md:flex items-center gap-6">
+            {/* Centered Navigation Links */}
+            <div className="hidden md:flex items-center gap-6 absolute left-1/2 transform -translate-x-1/2">
               <Link
                 to="/"
                 className={`text-sm font-medium transition-colors hover:text-primary ${
