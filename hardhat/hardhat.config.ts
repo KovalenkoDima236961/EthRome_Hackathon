@@ -20,6 +20,10 @@ const config: HardhatUserConfig = {
                 dev: true,
             },
         },
+        localNode: {
+            polkavm: true,
+            url: "http://127.0.0.1:8545",
+        }
     },
 }
 
