@@ -4,28 +4,30 @@ import { debug } from '../utils/debug';
 // Contract ABI - only the functions we need
 const CONTRACT_ABI = [
   {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "pdfHash",
-        "type": "bytes32"
-      }
+    "inputs":[{"internalType":"bytes32","name":"pdfHash","type":"bytes32"}],
+    "name":"isPdfHashUsed",
+    "outputs":[{"internalType":"bool","name":"","type":"bool"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[
+      {"internalType":"address","name":"to","type":"address"},
+      {"internalType":"string","name":"_tokenURI","type":"string"},
+      {"internalType":"bytes32","name":"_pdfHash","type":"bytes32"},
+      {"internalType":"bytes32","name":"_merkleRoot","type":"bytes32"},
+      {"internalType":"uint256","name":"_deadline","type":"uint256"},
+      {"internalType":"bytes","name":"signature","type":"bytes"}
     ],
-    "name": "isPdfHashUsed",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
+    "name":"mintWithIssuerSig",
+    "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+    "stateMutability":"nonpayable",
+    "type":"function"
   }
 ];
 
 // Contract configuration
-const CONTRACT_ADDRESS = '0xe043B560F711dE2d43702A804223504E60CFA488';
+export const CONTRACT_ADDRESS = '0xe043B560F711dE2d43702A804223504E60CFA488';
 
 // Network configuration for Polkadot Paseo Passethub
 const NETWORK_CONFIG = {
@@ -44,12 +46,12 @@ const NETWORK_CONFIG = {
 const VALID_CHAIN_IDS = ['0x1a4', '420', 420];
 
 export class ContractService {
-  private contract: ethers.Contract;
+  private readContract: ethers.Contract;
   private provider: ethers.BrowserProvider;
 
   constructor(provider: ethers.BrowserProvider) {
     this.provider = provider;
-    this.contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    this.readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
   }
 
   /**
@@ -65,7 +67,7 @@ export class ContractService {
       debug.log('ContractService: Hash as bytes32:', hashBytes32);
       
       debug.log('ContractService: Calling contract method...');
-      const result = await this.contract.isPdfHashUsed(hashBytes32);
+      const result = await this.readContract.isPdfHashUsed(hashBytes32);
       debug.log('ContractService: Contract returned:', result);
       
       return result;
@@ -83,6 +85,66 @@ export class ContractService {
         throw new Error(`Failed to check PDF hash on blockchain: ${error.message || 'Unknown error'}`);
       }
     }
+  }
+
+  async mintWithIssuerSig(
+    userAddress: string,
+    tokenURI: string,
+    pdfHash: string,
+    merkleRoot: string,
+    finalDeadline: bigint,
+    signature: string
+  ): Promise<ethers.TransactionResponse> {
+    try {
+      const signer = await this.provider.getSigner();
+      const write = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+      await write.mintWithIssuerSig.staticCall(
+        userAddress,
+        tokenURI,
+        pdfHash,
+        merkleRoot,
+        finalDeadline,
+        signature
+      );
+
+      const GAS_LIMIT = 500_000n;
+      const tx = await write.mintWithIssuerSig(
+        userAddress,
+        tokenURI,
+        pdfHash,
+        merkleRoot,
+        finalDeadline,
+        signature,
+        { gasLimit: GAS_LIMIT }
+      );
+      debug.log('mintWithIssuerSig tx:', tx.hash);
+
+      return tx;
+    } catch (error: any) {
+      const msg = String(error?.message || error?.shortMessage || '');
+
+      if (/AuthExpired/i.test(msg))        throw new Error('Authorization expired. Please request a new signature.');
+      if (/PdfAlreadyUsed/i.test(msg))     throw new Error('This certificate hash has already been minted.');
+      if (/SigAlreadyUsed/i.test(msg))     throw new Error('This signature has already been used.');
+      if (/InvalidIssuerSignature/i.test(msg))
+        throw new Error('Issuer signature invalid. Ensure the backend signs with the contract owner key and the same chainId/address.');
+
+      if (error?.code === 'CALL_EXCEPTION' && /estimateGas/i.test(msg)) {
+        throw new Error('Transaction simulation failed (gas estimate). Usually this means the signature/domain or inputs don’t match the contract. Double-check chainId, contract address, and EIP-712 name/version.');
+      }
+      if (error?.code === 'UNSUPPORTED_OPERATION' && /sendTransaction/i.test(msg)) {
+        throw new Error('Your wallet cannot send EVM txs on this network. Use an EVM provider (MetaMask / Talisman EVM) connected to Paseo.');
+      }
+
+      throw new Error(`Failed to send mint transaction: ${msg || 'Unknown error'}`);
+    }
+  }
+
+  buildTxUrl(txHash: string): string | null {
+    const base = NETWORK_CONFIG.blockExplorerUrls?.[0];
+    if (!base) return null;
+    return `${base.replace(/\/$/, '')}/tx/${txHash}`;
   }
 
   /**

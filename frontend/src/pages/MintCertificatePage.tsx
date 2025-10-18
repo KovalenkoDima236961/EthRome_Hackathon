@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
 import { Check, ExternalLink, FileText } from 'lucide-react';
-import { ethers } from 'ethers';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { StepIndicator } from '../components/StepIndicator';
 import { Alert } from '../components/Alert';
 import { WalletInstructions } from '../components/WalletInstructions';
 import { useWeb3 } from '../contexts/Web3Context';
-import { ContractService } from '../services/contractService';
+import { CONTRACT_ADDRESS, ContractService } from '../services/contractService';
 import { CertificateService } from '../services/certificateService';
 import type { CertificateVerificationResponse } from '../types/certificate';
-import { generatePdfHash } from '../utils/pdfUtils';
+import { generatePdfHash, type Json } from '../utils/pdfUtils';
 import { detectWallets } from '../utils/walletDetection';
 import { debug } from '../utils/debug';
 import { CertificateDisplay } from '../components/CertificateDisplay';
+import { deriveSymmetricKeyFromWallet, aesEncryptBytes, aesEncryptJson } from '../utils/cryptographyUtils';
+import { uploadBlobToIpfs } from "../utils/ipfs_util";
 
 export const MintCertificatePage: React.FC = () => {
-  const { isConnected, provider } = useWeb3();
+  const { isConnected, provider, account } = useWeb3();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [verificationHash, setVerificationHash] = useState<string>('');
   const [isVerified, setIsVerified] = useState(false);
@@ -25,6 +26,9 @@ export const MintCertificatePage: React.FC = () => {
   const [isCheckingHash, setIsCheckingHash] = useState(false);
   const [certificateData, setCertificateData] = useState<CertificateVerificationResponse | null>(null);
   const [isMinting, setIsMinting] = useState(false);
+  const [isOnChainMint, setIsOnChainMint] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
+  const [txUrl, setTxUrl] = useState<string | null>(null);
 
   // Check if Talisman is available
   const wallets = detectWallets();
@@ -189,6 +193,137 @@ export const MintCertificatePage: React.FC = () => {
     }
   };
 
+  const handleOnChainMint = async () => {
+    setTxHash(null);
+    setTxUrl(null);
+    if (!uploadedFile) {
+      setError('No certificate file to mint.');
+      return;
+    }
+    if (!provider) {
+      setError('Wallet provider not found. Please reconnect your wallet.');
+      return;
+    }
+    if (!account) {
+      setError('No wallet account. Please reconnect your wallet.');
+    }
+    if (!verificationHash) {
+      setError('Missing verification hash. Please verify your certificate again.');
+      return;
+    }
+    if (!certificateData) {
+      setError('No certificate data. Please run "Mint NFT" step first.');
+      return;
+    }
+
+    setIsOnChainMint(true);
+    setError(null);
+
+    try {
+      const contractService = new ContractService(provider);
+      const isCorrectNetwork = await contractService.isCorrectNetwork();
+      const skipNetworkCheck = process.env.NODE_ENV === 'development';
+
+      if (!isCorrectNetwork && !skipNetworkCheck) {
+        setError('Please switch to Paseo Passethub network in your wallet and try again.');
+        setIsVerified(false);
+        return;
+      }
+
+      const alreadyUsed = await contractService.isPdfHashUsed(verificationHash);
+      if (alreadyUsed) {
+        setError('This certificate has already been used and cannot be minted again.');
+        setIsVerified(false);
+        return;
+      }
+
+      debug.log('Start processing of encrypting the certificate');
+
+      const key = await deriveSymmetricKeyFromWallet(provider);
+      debug.log('Derived symmetric key (SHA-256 of signature):', key.toString());
+
+      debug.log('Encrypt and upload the PDF');
+      const fileBytes = new Uint8Array(await uploadedFile.arrayBuffer());
+      const encryptedPdf = aesEncryptBytes(fileBytes, key);
+      const encryptedPdfBlob = new Blob([encryptedPdf], {
+        type: 'application/octet-stream',
+      });
+      const encryptedPdfIpfsUrl = await uploadBlobToIpfs(encryptedPdfBlob);
+
+      if (certificateData === null) throw Error();
+
+      const fieldsWithPdf = {
+        ...certificateData.fields,
+        certificate_ipfs_url: encryptedPdfIpfsUrl,
+        __merkleSalts: certificateData.merkle_salts,
+        __merkleVersion: 1,
+      } satisfies Record<string, Json>;
+
+      const encryptedFieldsBytes = aesEncryptJson(fieldsWithPdf, key);
+      const encryptedFieldsBlob = new Blob([encryptedFieldsBytes], {
+        type: 'application/octet-stream',
+      });
+      const encrypytedFieldsIpfsUrl = await uploadBlobToIpfs(encryptedFieldsBlob);
+      
+      const backendBase =
+        process.env.NODE_ENV === 'development'
+          ? 'http://localhost:8000'
+          : 'https://your-backend-url.com';
+
+      const signUrl = `${backendBase}/api/sign-mint`;
+      const net = await provider.getNetwork();
+      const chainIdFromWallet = Number(net.chainId);
+
+      const signRes = await fetch(signUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: account,
+          tokenURI: encrypytedFieldsIpfsUrl.trim(),
+          pdfHash: verificationHash,
+          merkleRoot: certificateData.merkle_root,
+          chainId: chainIdFromWallet,
+          contract_address: CONTRACT_ADDRESS
+        }),
+      });
+
+      if (!signRes.ok) {
+        const txt = await signRes.text();
+        throw new Error(`sign-mint failed: ${txt}`);
+      }
+
+      const { signature, deadline } = (await signRes.json()) as {
+        signature: string;
+        deadline: number;
+      };
+
+      const finalDeadline = BigInt(deadline);
+
+      debug.log('Calling smart contract mintWithIssuerSing...');
+      const tx = await contractService.mintWithIssuerSig(
+        account,
+        encrypytedFieldsIpfsUrl.trim(),
+        verificationHash,
+        certificateData.merkle_root,
+        finalDeadline,
+        signature
+      );
+
+      setTxHash(tx.hash);
+      setTxUrl(contractService.buildTxUrl(tx.hash))
+      setError(null);
+
+      alert('Certificate Minted');
+    } catch (e: any) {
+      debug.error('On-chain mint error: ', e);
+      setError(e?.message ?? 'Failed to complete on-chain mint.');
+    } finally {
+      setIsOnChainMint(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 pt-24 pb-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -231,6 +366,27 @@ export const MintCertificatePage: React.FC = () => {
               message={error}
               onClose={() => setError(null)}
             />
+          </div>
+        )}
+
+        {/* Tx hash display */}
+        {txHash && (
+          <div className="max-w-2xl mx-auto mb-6">
+            <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+              <p className="text-sm text-gray-400 mb-1">Mint transaction submitted:</p>
+              <p className="text-white font-mono text-sm break-all">{txHash}</p>
+              {txUrl && (
+                <a
+                  href={txUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center mt-3 text-purple-300 hover:text-purple-200 underline"
+                >
+                  View on Explorer
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </a>
+              )}
+            </div>
           </div>
         )}
 
@@ -373,7 +529,11 @@ export const MintCertificatePage: React.FC = () => {
                 )}
                 
                 <div className="text-center">
-                  <Button className="group">
+                  <Button 
+                    onClick={handleOnChainMint}
+                    disabled={isOnChainMint}
+                    className="group"
+                  >
                     Complete NFT Minting
                     <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
