@@ -139,9 +139,9 @@ export class ContractService {
   }
 
   buildTxUrl(txHash: string): string | null {
-    const base = NETWORK_CONFIG.blockExplorer?.[0];
-    if (!base) return null;
-    return `${base.replace(/\/$/, '')}/tx/${txHash}`;
+    // Use Parity testnet Blockscout explorer
+    const base = 'https://blockscout-passet-hub.parity-testnet.parity.io';
+    return `${base}/tx/${txHash}`;
   }
 
   /**

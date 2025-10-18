@@ -1,58 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, ExternalLink, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/Card';
 import { StepIndicator } from '../components/StepIndicator';
 import { Alert } from '../components/Alert';
-import { WalletInstructions } from '../components/WalletInstructions';
 import { useWeb3 } from '../contexts/Web3Context';
 import { CONTRACT_ADDRESS, ContractService } from '../services/contractService';
 import { CertificateService } from '../services/certificateService';
 import type { CertificateVerificationResponse } from '../types/certificate';
 import { generatePdfHash, type Json } from '../utils/pdfUtils';
-import { detectWallets } from '../utils/walletDetection';
 import { debug } from '../utils/debug';
 import { CertificateDisplay } from '../components/CertificateDisplay';
 import { deriveSymmetricKeyFromWallet, aesEncryptBytes, aesEncryptJson } from '../utils/cryptographyUtils';
 import { uploadBlobToIpfs } from "../utils/ipfs_util";
+import GradientText from "../components/GradientText";
 
 export const MintCertificatePage: React.FC = () => {
   const { isConnected, provider, account } = useWeb3();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [verificationHash, setVerificationHash] = useState<string>('');
+  const [isOnChainVerified, setIsOnChainVerified] = useState(false);
+  const [isServerSideVerified, setIsServerSideVerified] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [isMinted, setIsMinted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCheckingHash, setIsCheckingHash] = useState(false);
+  const [isCheckingOnChain, setIsCheckingOnChain] = useState(false);
+  const [isCheckingServerSide, setIsCheckingServerSide] = useState(false);
   const [certificateData, setCertificateData] = useState<CertificateVerificationResponse | null>(null);
-  const [isMinting, setIsMinting] = useState(false);
   const [isOnChainMint, setIsOnChainMint] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [txUrl, setTxUrl] = useState<string | null>(null);
 
-  // Check if Talisman is available
-  const wallets = detectWallets();
-  const hasTalisman = wallets.some(wallet => wallet.name === 'Talisman');
+
+  // Update overall verification state when both substeps are complete
+  useEffect(() => {
+    setIsVerified(isOnChainVerified && isServerSideVerified);
+  }, [isOnChainVerified, isServerSideVerified]);
 
   const steps = [
     {
       id: 'upload',
       title: 'Upload Certificate',
-      description: 'Upload your PDF certificate to begin the verification process.',
+      description: 'Upload your PDF certificate',
       completed: !!uploadedFile,
       active: !uploadedFile
     },
     {
       id: 'verify',
       title: 'Verify Certificate',
-      description: 'Generate hash and verify on blockchain.',
+      description: 'On-chain and Server-side verification',
       completed: isVerified,
-      active: !!uploadedFile && !isVerified
+      active: !!uploadedFile && !isVerified,
+      substeps: [
+        {
+          id: 'onchain',
+          title: 'On-chain Verification',
+          description: 'Generate hash and verify on blockchain.',
+          completed: isOnChainVerified,
+          active: !!uploadedFile && !isOnChainVerified
+        },
+        {
+          id: 'serverside',
+          title: 'Server-side Verification',
+          description: 'Verify certificate details with backend.',
+          completed: isServerSideVerified,
+          active: isOnChainVerified && !isServerSideVerified
+        }
+      ]
     },
     {
       id: 'mint',
       title: 'Mint NFT',
-      description: 'Create your certificate NFT.',
+      description: 'Create your certificate NFT',
       completed: isMinted,
       active: isVerified && !isMinted
     }
@@ -64,16 +83,19 @@ export const MintCertificatePage: React.FC = () => {
       setUploadedFile(file);
       setError(null);
       // Reset verification state when new file is uploaded
+      setIsOnChainVerified(false);
+      setIsServerSideVerified(false);
       setIsVerified(false);
       setVerificationHash('');
-      setIsCheckingHash(false);
+      setIsCheckingOnChain(false);
+      setIsCheckingServerSide(false);
       setCertificateData(null);
       setIsMinted(false);
     }
   };
 
-  const checkPdfHash = async (file: File) => {
-    debug.log('Starting PDF hash verification process...');
+  const checkOnChainVerification = async (file: File) => {
+    debug.log('Starting on-chain verification process...');
     
     if (!isConnected || !provider) {
       debug.error('Wallet not connected');
@@ -81,7 +103,7 @@ export const MintCertificatePage: React.FC = () => {
       return;
     }
 
-    setIsCheckingHash(true);
+    setIsCheckingOnChain(true);
     setError(null);
 
     try {
@@ -105,7 +127,7 @@ export const MintCertificatePage: React.FC = () => {
       if (!isCorrectNetwork && !skipNetworkCheck) {
         debug.log('Not on correct network. Please switch to Paseo Passethub manually.');
         setError('Please switch to Paseo Passethub network in your wallet and try again.');
-        setIsVerified(false);
+        setIsOnChainVerified(false);
         return;
       }
       
@@ -122,14 +144,14 @@ export const MintCertificatePage: React.FC = () => {
       if (isUsed) {
         debug.log('Certificate already used - showing error');
         setError('This certificate has already been used and cannot be minted again.');
-        setIsVerified(false);
+        setIsOnChainVerified(false);
       } else {
-        debug.log('Certificate is unique - verification successful');
+        debug.log('Certificate is unique - on-chain verification successful');
         setError(null);
-        setIsVerified(true);
+        setIsOnChainVerified(true);
       }
     } catch (err: any) {
-      debug.error('Error in verification process:', err);
+      debug.error('Error in on-chain verification process:', err);
       
       // Provide more specific error messages
       if (err.message?.includes('network')) {
@@ -141,14 +163,46 @@ export const MintCertificatePage: React.FC = () => {
       } else {
         setError(`Failed to verify certificate: ${err.message || 'Unknown error'}`);
       }
-      setIsVerified(false);
+      setIsOnChainVerified(false);
     } finally {
-      setIsCheckingHash(false);
-      debug.log('Verification process completed');
+      setIsCheckingOnChain(false);
+      debug.log('On-chain verification process completed');
     }
   };
 
-  const handleVerify = async () => {
+  const checkServerSideVerification = async (file: File) => {
+    debug.log('Starting server-side verification process...');
+    
+    setIsCheckingServerSide(true);
+    setError(null);
+
+    try {
+      debug.log('Calling backend API to verify certificate and extract data...');
+      const certificateService = new CertificateService();
+      const verificationResult = await certificateService.verifyCertificate(file);
+      
+      debug.log('Backend verification result:', verificationResult);
+      
+      if (verificationResult.is_verified) {
+        setCertificateData(verificationResult);
+        setIsServerSideVerified(true);
+        debug.log('Server-side verification successful');
+      } else {
+        setError('Certificate verification failed. Please check your certificate and try again.');
+        setIsServerSideVerified(false);
+        debug.error('Certificate verification failed:', verificationResult);
+      }
+    } catch (err: any) {
+      debug.error('Error during server-side verification process:', err);
+      setError(`Failed to verify certificate: ${err.message || 'Unknown error'}`);
+      setIsServerSideVerified(false);
+    } finally {
+      setIsCheckingServerSide(false);
+      debug.log('Server-side verification process completed');
+    }
+  };
+
+  const handleOnChainVerify = async () => {
     if (!uploadedFile) {
       setError('Please upload a PDF file first');
       return;
@@ -159,39 +213,18 @@ export const MintCertificatePage: React.FC = () => {
       return;
     }
 
-    await checkPdfHash(uploadedFile);
+    await checkOnChainVerification(uploadedFile);
   };
 
-  const handleMint = async () => {
-    if (!isVerified || !uploadedFile) return;
-    
-    setIsMinting(true);
-    setError(null);
-    
-    try {
-      debug.log('Starting NFT minting process...');
-      
-      // Call backend API to verify certificate and extract data
-      const certificateService = new CertificateService();
-      const verificationResult = await certificateService.verifyCertificate(uploadedFile);
-      
-      debug.log('Backend verification result:', verificationResult);
-      
-      if (verificationResult.is_verified) {
-        setCertificateData(verificationResult);
-        setIsMinted(true);
-        debug.log('Certificate successfully verified and ready for minting');
-      } else {
-        setError('Certificate verification failed. Please check your certificate and try again.');
-        debug.error('Certificate verification failed:', verificationResult);
-      }
-    } catch (err: any) {
-      debug.error('Error during NFT minting process:', err);
-      setError(`Failed to mint NFT: ${err.message || 'Unknown error'}`);
-    } finally {
-      setIsMinting(false);
+  const handleServerSideVerify = async () => {
+    if (!uploadedFile) {
+      setError('Please upload a PDF file first');
+      return;
     }
+
+    await checkServerSideVerification(uploadedFile);
   };
+
 
   const handleOnChainMint = async () => {
     setTxHash(null);
@@ -206,6 +239,7 @@ export const MintCertificatePage: React.FC = () => {
     }
     if (!account) {
       setError('No wallet account. Please reconnect your wallet.');
+      return;
     }
     if (!verificationHash) {
       setError('Missing verification hash. Please verify your certificate again.');
@@ -365,10 +399,9 @@ export const MintCertificatePage: React.FC = () => {
       );
 
       setTxHash(tx.hash);
-      setTxUrl(contractService.buildTxUrl(tx.hash))
+      setTxUrl(contractService.buildTxUrl(tx.hash));
       setError(null);
-
-      alert('Certificate Minted');
+      setIsMinted(true);
     } catch (e: any) {
       debug.error('On-chain mint error: ', e);
       setError(e?.message ?? 'Failed to complete on-chain mint.');
@@ -395,10 +428,14 @@ export const MintCertificatePage: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Mint Your{' '}
-            <span className="bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
-              Certificate
-            </span>
+            Mint Your <GradientText
+                colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
+                animationSpeed={5}
+                showBorder={false}
+                className="inline"
+              >
+                Certificate
+              </GradientText>
           </h1>
           <p className="text-xl text-gray-300">
             Upload, verify, and mint your certificate as an NFT
@@ -410,15 +447,15 @@ export const MintCertificatePage: React.FC = () => {
           <StepIndicator steps={steps} />
         </div>
 
-        {/* Wallet Connection Required */}
+        {/* Wallet Connection Warning */}
         {!isConnected && (
           <div className="max-w-2xl mx-auto mb-6">
-            <Alert
-              type="warning"
-              title="Wallet Connection Required"
-              message="Please connect your wallet to verify certificates on the blockchain."
-            />
-            {hasTalisman && <WalletInstructions />}
+            <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="w-5 h-5 text-yellow-400 mr-2">⚠️</div>
+                <p className="text-yellow-400 text-sm">Please connect your wallet to verify certificates on the blockchain.</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -471,7 +508,7 @@ export const MintCertificatePage: React.FC = () => {
               )}
               <h2 className="text-xl font-semibold text-white">Upload Certificate</h2>
             </div>
-            <p className="text-gray-400 mb-6">Upload your PDF certificate to begin the verification process.</p>
+            <p className="text-gray-400 mb-6">Upload your PDF certificate.</p>
             
             <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-purple-500 transition-colors">
               <input
@@ -515,46 +552,128 @@ export const MintCertificatePage: React.FC = () => {
               )}
               <h2 className="text-xl font-semibold text-white">Verify Certificate</h2>
             </div>
-            <p className="text-gray-400 mb-4">Click the button below to generate hash and verify on blockchain.</p>
+            <p className="text-gray-400 mb-6">Complete both verification steps to proceed with minting.</p>
             
-            <Button
-              onClick={handleVerify}
-              disabled={!uploadedFile || isCheckingHash || isVerified}
-              className="w-full mb-4"
-            >
-              {isCheckingHash ? 'Checking...' : isVerified ? 'Verified ✓' : 'Verify Certificate'}
-            </Button>
+            {/* On-chain Verification Substep */}
+            <div className="mb-6 p-4 border border-gray-600 rounded-lg">
+              <div className="flex items-center mb-3">
+                {isOnChainVerified ? (
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-teal-500 rounded-full flex items-center justify-center mr-3">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-white text-xs font-semibold">2.1</span>
+                  </div>
+                )}
+                <h3 className="text-lg font-semibold text-white">On-chain Verification</h3>
+              </div>
+              <p className="text-gray-400 mb-4">Generate hash and verify on blockchain.</p>
+              
+              <Button
+                onClick={handleOnChainVerify}
+                disabled={!uploadedFile || isCheckingOnChain || isOnChainVerified}
+                className="w-full mb-4"
+              >
+                {isCheckingOnChain ? 'Checking...' : isOnChainVerified ? 'Verified ✓' : 'Verify On-chain'}
+              </Button>
 
-            {/* Network status indicator */}
-            {isCheckingHash && (
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-3"></div>
-                  <div>
-                    <p className="text-blue-400 text-sm font-medium">Verifying certificate...</p>
-                    <p className="text-blue-300 text-xs mt-1">This may take a few moments</p>
+              {/* Network status indicator */}
+              {isCheckingOnChain && (
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400 mr-3"></div>
+                    <div>
+                      <p className="text-blue-400 text-sm font-medium">Verifying on blockchain...</p>
+                      <p className="text-blue-300 text-xs mt-1">This may take a few moments</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            
-            {verificationHash && (
-              <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-400 mb-1">Certificate Hash:</p>
-                <p className="text-white font-mono text-sm break-all">{verificationHash}</p>
-                {isCheckingHash && (
-                  <p className="text-sm text-blue-400 mt-2">Checking blockchain...</p>
+              {verificationHash && (
+                <div className="bg-gray-800 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-gray-400 mb-1">Certificate Hash:</p>
+                  <p className="text-white font-mono text-sm break-all">{verificationHash}</p>
+                  {isCheckingOnChain && (
+                    <p className="text-sm text-blue-400 mt-2">Checking blockchain...</p>
+                  )}
+                </div>
+              )}
+              
+              {isOnChainVerified && !error && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <Check className="w-5 h-5 text-green-400 mr-2" />
+                    <p className="text-green-400 text-sm">On-chain verification complete! Certificate is unique.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Server-side Verification Substep */}
+            <div className="mb-6 p-4 border border-gray-600 rounded-lg">
+              <div className="flex items-center mb-3">
+                {isServerSideVerified ? (
+                  <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-teal-500 rounded-full flex items-center justify-center mr-3">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                ) : (
+                  <div className="w-6 h-6 bg-gray-600 rounded-full flex items-center justify-center mr-3">
+                    <span className="text-white text-xs font-semibold">2.2</span>
+                  </div>
                 )}
+                <h3 className="text-lg font-semibold text-white">Server-side Verification</h3>
               </div>
-            )}
+              <p className="text-gray-400 mb-4">Verify certificate details with backend.</p>
+              
+              <Button
+                onClick={handleServerSideVerify}
+                disabled={!uploadedFile || isCheckingServerSide || isServerSideVerified || !isOnChainVerified}
+                className="w-full mb-4"
+              >
+                {isCheckingServerSide ? 'Verifying...' : isServerSideVerified ? 'Verified ✓' : 'Verify Server-side'}
+              </Button>
+
+              {/* Server-side verification status indicator */}
+              {isCheckingServerSide && (
+                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 mb-4">
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-3"></div>
+                    <div>
+                      <p className="text-purple-400 text-sm font-medium">Verifying certificate details...</p>
+                      <p className="text-purple-300 text-xs mt-1">Processing with backend server</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {isServerSideVerified && !error && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <Check className="w-5 h-5 text-green-400 mr-2" />
+                    <p className="text-green-400 text-sm">Server-side verification complete! Certificate details validated.</p>
+                  </div>
+                </div>
+              )}
+            </div>
             
             {isVerified && !error && (
-              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                <div className="flex items-center">
-                  <Check className="w-5 h-5 text-green-400 mr-2" />
-                  <p className="text-green-400 text-sm">Certificate verified! This certificate is unique and ready to mint.</p>
+              <div className="space-y-6">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <Check className="w-5 h-5 text-green-400 mr-2" />
+                    <p className="text-green-400 text-sm">All verifications complete! Certificate is ready to mint.</p>
+                  </div>
                 </div>
+                
+                {/* Certificate Display - Show automatically after verification */}
+                {certificateData && (
+                  <CertificateDisplay 
+                    fields={certificateData.fields} 
+                    isVerified={certificateData.is_verified} 
+                  />
+                )}
               </div>
             )}
           </div>
@@ -581,47 +700,92 @@ export const MintCertificatePage: React.FC = () => {
                   <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Check className="w-8 h-8 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Success!</h3>
-                  <p className="text-gray-400 mb-6">Your certificate has been verified and is ready to mint as an NFT.</p>
-                </div>
-                
-                {/* Certificate Display */}
-                {certificateData && (
-                  <CertificateDisplay 
-                    fields={certificateData.fields} 
-                    isVerified={certificateData.is_verified} 
-                  />
-                )}
-                
-                <div className="text-center">
-                  <Button 
-                    onClick={handleOnChainMint}
-                    disabled={isOnChainMint}
-                    className="group"
-                  >
-                    Complete NFT Minting
-                    <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Button>
+                  <h3 className="text-2xl font-bold text-white mb-2">Certificate NFT Minted Successfully!</h3>
+                  <p className="text-gray-400 mb-6">Your certificate has been verified and minted as an NFT on the blockchain.</p>
+                  
+                  {/* Transaction Details */}
+                  {txHash && (
+                    <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-center mb-2">
+                        <Check className="w-5 h-5 text-green-400 mr-2" />
+                        <span className="text-green-400 font-medium">Transaction Confirmed</span>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-gray-300 text-sm mb-2">Transaction Hash:</p>
+                        <div className="bg-gray-800/50 rounded px-3 py-2 mb-3">
+                          <code className="text-green-400 text-xs break-all">{txHash}</code>
+                        </div>
+                        {txUrl && (
+                          <Button
+                            onClick={() => window.open(txUrl, '_blank')}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            View on Explorer
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Certificate Details */}
+                  {certificateData && (
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                      <h4 className="text-blue-400 font-medium mb-2">Certificate Details</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Merkle Root:</span>
+                          <code className="text-blue-300 text-xs">{certificateData.merkle_root}</code>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Verification Status:</span>
+                          <span className="text-green-400">✓ Verified</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center mt-10">
+                    <Button
+                      onClick={() => {
+                        setUploadedFile(null);
+                        setVerificationHash('');
+                        setIsOnChainVerified(false);
+                        setIsServerSideVerified(false);
+                        setIsVerified(false);
+                        setIsMinted(false);
+                        setError(null);
+                        setCertificateData(null);
+                        setTxHash(null);
+                        setTxUrl(null);
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Mint Another Certificate
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <Button
-                  onClick={handleMint}
-                  disabled={!isVerified || isMinting}
+                  onClick={handleOnChainMint}
+                  disabled={!isVerified || isOnChainMint}
                   className="w-full"
                 >
-                  {isMinting ? 'Processing Certificate...' : 'Mint NFT'}
+                  {isOnChainMint ? 'Minting NFT...' : 'Mint NFT'}
                 </Button>
                 
                 {/* Minting progress indicator */}
-                {isMinting && (
+                {isOnChainMint && (
                   <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
                     <div className="flex items-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-3"></div>
                       <div>
-                        <p className="text-purple-400 text-sm font-medium">Processing certificate...</p>
-                        <p className="text-purple-300 text-xs mt-1">Verifying certificate details with backend</p>
+                        <p className="text-purple-400 text-sm font-medium">Minting NFT...</p>
+                        <p className="text-purple-300 text-xs mt-1">Please sign the transaction in your wallet</p>
                       </div>
                     </div>
                   </div>
