@@ -4,23 +4,25 @@ import { debug } from '../utils/debug';
 // Contract ABI - only the functions we need
 const CONTRACT_ABI = [
   {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "pdfHash",
-        "type": "bytes32"
-      }
+    "inputs":[{"internalType":"bytes32","name":"pdfHash","type":"bytes32"}],
+    "name":"isPdfHashUsed",
+    "outputs":[{"internalType":"bool","name":"","type":"bool"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[
+      {"internalType":"address","name":"to","type":"address"},
+      {"internalType":"string","name":"_tokenURI","type":"string"},
+      {"internalType":"bytes32","name":"_pdfHash","type":"bytes32"},
+      {"internalType":"bytes32","name":"_merkleRoot","type":"bytes32"},
+      {"internalType":"uint256","name":"_deadline","type":"uint256"},
+      {"internalType":"bytes","name":"signature","type":"bytes"}
     ],
-    "name": "isPdfHashUsed",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
+    "name":"mintWithIssuerSig",
+    "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+    "stateMutability":"nonpayable",
+    "type":"function"
   }
 ];
 
@@ -68,6 +70,48 @@ export class ContractService {
       const result = await this.contract.isPdfHashUsed(hashBytes32);
       debug.log('ContractService: Contract returned:', result);
       
+      return result;
+    } catch (error: any) {
+      debug.error('ContractService: Error checking PDF hash:', error);
+      
+      // Provide more specific error information
+      if (error.code === 'NETWORK_ERROR') {
+        throw new Error('Network error: Unable to connect to blockchain');
+      } else if (error.code === 'CALL_EXCEPTION') {
+        throw new Error('Smart contract call failed: ' + error.reason);
+      } else if (error.message?.includes('revert')) {
+        throw new Error('Smart contract execution reverted: ' + error.message);
+      } else {
+        throw new Error(`Failed to check PDF hash on blockchain: ${error.message || 'Unknown error'}`);
+      }
+    }
+  }
+
+  async mintWithIssuerSig(
+    userAddress: string,
+    tokenURI: string,
+    pdfHash: string,
+    merkleRoot: string,
+    finalDeadline: bigint,
+    signature: string
+  ): Promise<bigint | string> {
+    try {
+      debug.log('ContractService: Minting NFT with issuer sig:', signature);
+      debug.log('ContractService: Contract address:', CONTRACT_ADDRESS);
+
+      const hashBytes32 = ethers.getBytes(pdfHash);
+      debug.log('ContractService: Hash as bytes32:', hashBytes32)
+
+      debug.log('ContractService: Calling contract method...');
+      const result = await this.contract.mintWithIssuerSig(
+        userAddress,
+        tokenURI,
+        hashBytes32,
+        merkleRoot,
+        finalDeadline
+      );
+      debug.log('ContractService: Contract returned:', result);
+
       return result;
     } catch (error: any) {
       debug.error('ContractService: Error checking PDF hash:', error);
