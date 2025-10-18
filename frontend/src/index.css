@@ -2,27 +2,142 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 220 25% 97%;
+    --foreground: 260 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 260 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 260 15% 15%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 188 94% 43%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 15% 92%;
+    --muted-foreground: 260 10% 45%;
+
+    --accent: 280 100% 70%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 262 83% 58%;
+
+    --radius: 0.75rem;
+
+    /* Web3 Specific Colors */
+    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(188 94% 43%));
+    --gradient-secondary: linear-gradient(135deg, hsl(280 100% 70%), hsl(262 83% 58%));
+    --gradient-glow: radial-gradient(circle at center, hsl(262 83% 58% / 0.15), transparent 70%);
+    
+    --glass-bg: hsl(0 0% 100% / 0.7);
+    --glass-border: hsl(0 0% 100% / 0.3);
+    
+    --shadow-glow: 0 0 40px hsl(262 83% 58% / 0.3);
+    --shadow-card: 0 10px 30px hsl(260 15% 15% / 0.1);
+  }
+
+  .dark {
+    --background: 260 25% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 260 20% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 260 20% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 188 94% 43%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 260 20% 18%;
+    --muted-foreground: 260 10% 65%;
+
+    --accent: 280 100% 70%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 260 20% 20%;
+    --input: 260 20% 20%;
+    --ring: 262 83% 58%;
+
+    /* Web3 Specific Colors - Dark Mode */
+    --glass-bg: hsl(260 20% 12% / 0.7);
+    --glass-border: hsl(0 0% 100% / 0.1);
+    
+    --shadow-glow: 0 0 60px hsl(262 83% 58% / 0.4);
+    --shadow-card: 0 10px 40px hsl(0 0% 0% / 0.5);
+  }
+}
+
 @layer base {
   * {
-    @apply border-gray-700;
+    @apply border-border;
   }
-  
+
   body {
-    @apply bg-gray-900 text-white;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
 
 @layer components {
+  .glass-card {
+    @apply bg-[var(--glass-bg)] backdrop-blur-xl border border-[var(--glass-border)] shadow-[var(--shadow-card)];
+  }
+  
   .gradient-text {
-    @apply bg-gradient-to-r from-purple-500 to-teal-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
   }
   
-  .glass-effect {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  .glow-effect {
+    @apply shadow-[var(--shadow-glow)];
   }
   
-  .card-hover {
-    @apply transition-all duration-300 hover:scale-105 hover:shadow-2xl;
+  .hero-bg {
+    background: 
+      radial-gradient(circle at 20% 80%, hsl(262 83% 58% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, hsl(188 94% 43% / 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, hsl(280 100% 70% / 0.05) 0%, transparent 50%),
+      linear-gradient(135deg, hsl(260 25% 8%) 0%, hsl(260 20% 12%) 100%);
+  }
+  
+  .hero-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      linear-gradient(90deg, transparent 98%, hsl(262 83% 58% / 0.1) 100%),
+      linear-gradient(0deg, transparent 98%, hsl(188 94% 43% / 0.1) 100%);
+    background-size: 50px 50px;
+    pointer-events: none;
+  }
+  
+  .polkadot-dot {
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle, hsl(262 83% 58% / 0.6) 0%, transparent 70%);
+    border-radius: 50%;
+    box-shadow: 0 0 20px hsl(262 83% 58% / 0.3);
   }
 }

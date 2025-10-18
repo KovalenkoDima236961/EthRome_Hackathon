@@ -1,158 +1,221 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Upload, Shield, Tag, ArrowRight, ExternalLink } from 'lucide-react';
-import { Button } from '../components/Button';
-import { Card } from '../components/Card';
+import { ArrowRight, Upload, Shield, Award, FileCheck, Network, Hexagon } from "lucide-react";
+import { Button } from "../components/ui/Button";
+import { Navigation } from "../components/Navigation";
+import { Link } from "react-router-dom";
+import heroBg from "../assets/hero-bg.jpeg";
 
-export const LandingPage: React.FC = () => {
-  const features = [
-    {
-      icon: <Upload className="w-8 h-8" />,
-      title: 'Upload Certificate',
-      description: 'Upload your PDF certificate to our secure platform.'
-    },
-    {
-      icon: <Shield className="w-8 h-8" />,
-      title: 'Verify on Chain',
-      description: 'Our system generates a hash and verifies it on the blockchain.'
-    },
-    {
-      icon: <Tag className="w-8 h-8" />,
-      title: 'Mint NFT',
-      description: 'Receive a unique NFT as permanent proof of ownership.'
-    }
-  ];
-
-  const benefits = [
-    {
-      title: 'Immutable Records',
-      description: 'Your certificates are permanently stored on the blockchain, making them tamper-proof and verifiable forever.'
-    },
-    {
-      title: 'True Ownership',
-      description: 'NFT minting gives you provable ownership of your achievements, transferable and tradeable.'
-    },
-    {
-      title: 'Instant Verification',
-      description: 'Anyone can verify your certificate\'s authenticity in seconds using blockchain technology.'
-    },
-    {
-      title: 'Future-Proof',
-      description: 'Built on decentralized technology that ensures your records survive independently of any single entity.'
-    }
-  ];
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+    <div className="min-h-screen">
+      <Navigation />
+      
       {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6">
-            Upload. Verify.{' '}
-            <span className="bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
-              Own.
-            </span>
-          </h1>
-          <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
-            Turn your certificates into verifiable, blockchain-backed NFTs. Permanent proof of ownership and authenticity.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="group">
-              Get Started
-              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button variant="outline" size="lg">
-              Learn More
-            </Button>
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-glow opacity-50" />
+        <div 
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage: `url(${heroBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+        
+        {/* Floating Polkadot Dots */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="polkadot-dot absolute top-1/4 left-1/4 animate-float" style={{ animationDelay: '0s' }} />
+          <div className="polkadot-dot absolute top-1/3 right-1/4 animate-float" style={{ animationDelay: '1s' }} />
+          <div className="polkadot-dot absolute bottom-1/3 left-1/3 animate-float" style={{ animationDelay: '2s' }} />
+        </div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center animate-fade-in">
+            {/* Certificate Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full certificate-card mb-6">
+              <FileCheck className="h-5 w-5 text-primary" />
+              <span className="text-sm font-semibold">Certificate Verification Platform</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+              Secure Your Certificates on{" "}
+              <span className="gradient-text">Polkadot</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Transform academic and professional certificates into verifiable NFTs on Polkadot blockchain. 
+              Immutable proof of your achievements, forever.
+            </p>
+            
+            {/* Visual Trust Indicators */}
+            <div className="flex items-center justify-center gap-8 mb-8 flex-wrap">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Hexagon className="h-5 w-5 text-primary" />
+                <span className="text-sm">Polkadot Powered</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Shield className="h-5 w-5 text-primary" />
+                <span className="text-sm">Blockchain Verified</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Network className="h-5 w-5 text-primary" />
+                <span className="text-sm">Decentralized</span>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/mint">
+                <Button variant="hero" size="xl" className="gap-2 animate-glow-pulse">
+                  Verify Certificate
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Button variant="glass" size="xl">
+                Learn More
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              How It{' '}
-              <span className="bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
-                Works
-              </span>
+      <section className="py-20 relative">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16 animate-fade-in">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4">
+              How It <span className="gradient-text">Works</span>
             </h2>
-            <p className="text-xl text-gray-300">
-              Three simple steps to secure your certificates on the blockchain
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Three simple steps to secure your certificates on Polkadot blockchain
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} hover className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-teal-500 rounded-xl flex items-center justify-center text-white mx-auto mb-4">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-400">{feature.description}</p>
-                <div className="absolute top-4 right-4 text-6xl font-bold text-gray-700 opacity-20">
-                  {String(index + 1).padStart(2, '0')}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Why Web3 Verification Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-gray-800/30">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              Why{' '}
-              <span className="bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
-                Web3 Verification?
-              </span>
-            </h2>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            {benefits.map((benefit, index) => (
-              <div key={index} className="flex items-start space-x-4">
-                <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-2">{benefit.title}</h3>
-                  <p className="text-gray-400">{benefit.description}</p>
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {[
+              {
+                icon: Upload,
+                title: "Upload Certificate",
+                description: "Upload your academic or professional certificate (PDF format)",
+                step: "01"
+              },
+              {
+                icon: Shield,
+                title: "Verify on Polkadot",
+                description: "Certificate hash is generated and anchored on Polkadot blockchain",
+                step: "02"
+              },
+              {
+                icon: Award,
+                title: "Mint Certificate NFT",
+                description: "Receive a verifiable NFT on Polkadot as permanent proof of your credentials",
+                step: "03"
+              }
+            ].map((item, index) => (
+              <div
+                key={index}
+                className="certificate-card p-8 rounded-2xl hover:scale-105 transition-all duration-300 animate-fade-in relative group overflow-hidden"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                {/* Polkadot dots decoration */}
+                <div className="absolute -top-2 -right-2 w-20 h-20 bg-gradient-primary opacity-10 rounded-full blur-2xl" />
+                
+                <div className="absolute top-4 right-4 text-6xl font-bold text-primary/10 group-hover:text-primary/20 transition-colors">
+                  {item.step}
                 </div>
+                <div className="bg-gradient-primary p-4 rounded-xl w-fit mb-6 shadow-glow">
+                  <item.icon className="h-8 w-8 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
+                <p className="text-muted-foreground">{item.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Features Section */}
+      <section className="py-20 relative">
+        <div className="container mx-auto px-4">
+          <div className="certificate-card p-12 rounded-3xl max-w-5xl mx-auto animate-fade-in relative overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-primary opacity-5 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-secondary opacity-5 rounded-full blur-3xl" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-center gap-3 mb-8">
+                <Hexagon className="h-8 w-8 text-primary" />
+                <h2 className="text-4xl md:text-5xl font-bold text-center">
+                  Why <span className="gradient-text">Polkadot</span> for Certificates?
+                </h2>
+              </div>
+              <div className="grid md:grid-cols-2 gap-8">
+                {[
+                  {
+                    title: "Immutable Certificate Storage",
+                    description: "Your educational and professional certificates are permanently anchored on Polkadot, making them tamper-proof and verifiable forever."
+                  },
+                  {
+                    title: "Interoperable Credentials",
+                    description: "Polkadot's cross-chain architecture enables your certificates to be recognized across multiple blockchains and platforms."
+                  },
+                  {
+                    title: "Instant Credential Verification",
+                    description: "Employers and institutions can verify your certificates in seconds directly on Polkadot blockchain."
+                  },
+                  {
+                    title: "Scalable & Sustainable",
+                    description: "Built on Polkadot's energy-efficient infrastructure that scales with your growing credential portfolio."
+                  }
+                ].map((feature, index) => (
+                  <div key={index} className="flex gap-4">
+                    <div className="polkadot-dot mt-2 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                      <p className="text-muted-foreground">{feature.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <Card className="bg-gradient-to-r from-purple-500/20 to-teal-500/20 border-purple-500/30">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Secure Your Certificates?
-            </h2>
-            <p className="text-gray-300 mb-8">
-              Join thousands of professionals who trust CertifyChain for their certificate verification needs.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <section className="py-20 relative">
+        <div className="container mx-auto px-4">
+          <div className="bg-gradient-primary p-12 rounded-3xl max-w-4xl mx-auto text-center text-white animate-fade-in relative overflow-hidden">
+            {/* Certificate icon watermark */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10">
+              <FileCheck className="h-64 w-64" />
+            </div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-center gap-3 mb-6">
+                <Hexagon className="h-10 w-10" />
+                <h2 className="text-4xl md:text-5xl font-bold">
+                  Ready to Verify Your Certificates on Polkadot?
+                </h2>
+              </div>
+              <p className="text-xl mb-8 opacity-90">
+                Transform your credentials into blockchain-verified assets
+              </p>
               <Link to="/mint">
-                <Button size="lg" className="group">
-                  Start Minting
-                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-              <Link to="/certificates">
-                <Button variant="outline" size="lg">
-                  View Examples
-                  <ExternalLink className="w-5 h-5 ml-2" />
+                <Button variant="glass" size="xl" className="bg-white/20 hover:bg-white/30 text-white border-white/30 gap-2">
+                  <FileCheck className="h-5 w-5" />
+                  Verify Certificate Now
+                  <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
             </div>
-          </Card>
+          </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="border-t py-8">
+        <div className="container mx-auto px-4 text-center text-muted-foreground">
+          <p>&copy; 2025 CertifyChain. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
-};
+}
