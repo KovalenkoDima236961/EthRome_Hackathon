@@ -27,7 +27,7 @@ const CONTRACT_ABI = [
 ];
 
 // Contract configuration
-export const CONTRACT_ADDRESS = '0xe043B560F711dE2d43702A804223504E60CFA488';
+export const CONTRACT_ADDRESS = '0x67deeAcfA815903f48605d85B5279D9c729969B0';
 
 // Network configuration for Polkadot Paseo Passethub
 const NETWORK_CONFIG = {
@@ -39,7 +39,7 @@ const NETWORK_CONFIG = {
     decimals: 18,
   },
   rpcUrls: ['https://rpc-paseo.polkadot.tech'],
-  blockExplorerUrls: ['https://paseo.polkadot.tech'],
+  blockExplorerUrls: ['https://blockscout-passet-hub.parity-testnet.parity.io'],
 };
 
 // Alternative chain IDs that might be used for Paseo Passethub
@@ -142,9 +142,9 @@ export class ContractService {
   }
 
   buildTxUrl(txHash: string): string | null {
-    const base = NETWORK_CONFIG.blockExplorerUrls?.[0];
-    if (!base) return null;
-    return `${base.replace(/\/$/, '')}/tx/${txHash}`;
+    // Use Parity testnet Blockscout explorer
+    const base = 'https://blockscout-passet-hub.parity-testnet.parity.io';
+    return `${base}/tx/${txHash}`;
   }
 
   /**
