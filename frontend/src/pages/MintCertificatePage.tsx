@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Check, ExternalLink, FileText } from 'lucide-react';
-import { Button } from '../components/Button';
+import { Button } from '../components/ui/Button';
 import { Card } from '../components/Card';
 import { StepIndicator } from '../components/StepIndicator';
 import { Alert } from '../components/Alert';
@@ -325,8 +325,20 @@ export const MintCertificatePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 pt-24 pb-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen hero-bg relative overflow-hidden pt-24 pb-16">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-gradient-glow opacity-50" />
+      
+      {/* Floating Polkadot Dots */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="polkadot-dot absolute top-1/4 left-1/4 animate-float" style={{ animationDelay: '0s' }} />
+        <div className="polkadot-dot absolute top-1/3 right-1/4 animate-float" style={{ animationDelay: '1s' }} />
+        <div className="polkadot-dot absolute bottom-1/3 left-1/3 animate-float" style={{ animationDelay: '2s' }} />
+        <div className="polkadot-dot absolute top-2/3 right-1/3 animate-float" style={{ animationDelay: '3s' }} />
+        <div className="polkadot-dot absolute bottom-1/4 right-1/2 animate-float" style={{ animationDelay: '4s' }} />
+      </div>
+      
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
