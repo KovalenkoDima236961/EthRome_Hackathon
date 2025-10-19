@@ -56,6 +56,12 @@ Next step (after completing View NFTs): add zero-knowledge verification so anyon
 
 Main idea: the holder generates a zk proof off-chain that recomputes the commitment from the selected fields to the certificate’s on-chain Merkle root. The smart contract verifies this proof, ties it to a fixed code identity, and checks it against the root stored in CertificateNFT. This delivers content-based verification, protects privacy, prevents replay, and avoids reliance on a trusted setup. We plan to implement this with a general-purpose zkVM (e.g., RISC Zero) so we can keep the workflow simple while enabling on-chain verification of the proof.
 
+## Potential Impact on Polkadot
+Safer OpenGov, bounties, and grants.
+DAOs and treasuries can require proof of specific skills (e.g., Rust/Substrate, security) for proposers, curators, or bounty hunters—reducing spam, sybil abuse, and misaligned incentives while speeding due diligence.
+Privacy-preserving disclosures by default.
+Holder-controlled, selective disclosure (now) and zk verification (next) let users prove the parts that matter (course, issuer, date, level) without exposing the full document—aligning with Polkadot’s user-centric, multi-chain design. (Potential synergies with Phala/TEE and zkVMs.)
+
 ## Local Setup
 To run the app locally, use the README inside each subfolder.
 
