@@ -71,7 +71,7 @@ Install and run a local IPFS (Kubo) node. Ensure the HTTP API is reachable at ht
 ipfs init   # first time only
 ipfs daemon
 ```
-You may also use the ipfs service in docker-compose.yml. If your IPFS API is not on http://localhost:5001, set the backend environment variable accordingly (e.g., IPFS_API_URL=http://<host>:<port>).
+You may also use the ipfs service in docker-compose.yml.
 
 
 ### Docker Compose status (backend)
