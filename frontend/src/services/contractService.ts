@@ -23,6 +23,55 @@ const CONTRACT_ABI = [
     "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
     "stateMutability":"nonpayable",
     "type":"function"
+  },
+  {
+    "inputs":[{"internalType":"address","name":"owner","type":"address"}],
+    "name":"balanceOf",
+    "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],
+    "name":"tokenOfOwnerByIndex",
+    "outputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],
+    "name":"tokenURI",
+    "outputs":[{"internalType":"string","name":"","type":"string"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],
+    "name":"ownerOf",
+    "outputs":[{"internalType":"address","name":"","type":"address"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],
+    "name":"pdfHashOf",
+    "outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],
+    "name":"rootOf",
+    "outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],
+    "stateMutability":"view",
+    "type":"function"
+  },
+  {
+    "inputs":[],
+    "name":"owner",
+    "outputs":[{"internalType":"address","name":"","type":"address"}],
+    "stateMutability":"view",
+    "type":"function"
   }
 ];
 
@@ -105,7 +154,7 @@ export class ContractService {
 
       console.log("tokenURI:", tokenURI);
 
-      const GAS_LIMIT = 500_000n;
+      const GAS_LIMIT = BigInt(500_000);
       const tx = await write.mintWithIssuerSig(
         userAddress,
         tokenURI,
@@ -229,6 +278,186 @@ export class ContractService {
         debug.error('ContractService: Network switch error:', switchError);
         throw new Error('Failed to switch network: ' + switchError.message);
       }
+    }
+  }
+
+  /**
+   * Get the number of tokens owned by an address
+   */
+  async balanceOf(owner: string): Promise<number> {
+    try {
+      debug.log('ContractService: Getting balance for owner:', owner);
+      const balance = await this.readContract.balanceOf(owner);
+      debug.log('ContractService: Balance:', balance.toString());
+      return Number(balance);
+    } catch (error: any) {
+      debug.error('ContractService: Error getting balance:', error);
+      throw new Error(`Failed to get balance: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get token ID owned by an address at a specific index
+   */
+  async tokenOfOwnerByIndex(owner: string, index: number): Promise<number> {
+    try {
+      debug.log('ContractService: Getting token at index:', index, 'for owner:', owner);
+      const tokenId = await this.readContract.tokenOfOwnerByIndex(owner, index);
+      debug.log('ContractService: Token ID:', tokenId.toString());
+      return Number(tokenId);
+    } catch (error: any) {
+      debug.error('ContractService: Error getting token by index:', error);
+      throw new Error(`Failed to get token by index: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get the token URI for a specific token ID
+   */
+  async tokenURI(tokenId: number): Promise<string> {
+    try {
+      debug.log('ContractService: Getting token URI for token ID:', tokenId);
+      const uri = await this.readContract.tokenURI(tokenId);
+      debug.log('ContractService: Token URI:', uri);
+      return uri;
+    } catch (error: any) {
+      debug.error('ContractService: Error getting token URI:', error);
+      throw new Error(`Failed to get token URI: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get the owner of a specific token ID
+   */
+  async ownerOf(tokenId: number): Promise<string> {
+    try {
+      debug.log('ContractService: Getting owner for token ID:', tokenId);
+      const owner = await this.readContract.ownerOf(tokenId);
+      debug.log('ContractService: Owner:', owner);
+      return owner;
+    } catch (error: any) {
+      debug.error('ContractService: Error getting owner:', error);
+      throw new Error(`Failed to get owner: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get the PDF hash for a specific token ID
+   */
+  async pdfHashOf(tokenId: number): Promise<string> {
+    try {
+      debug.log('ContractService: Getting PDF hash for token ID:', tokenId);
+      const pdfHash = await this.readContract.pdfHashOf(tokenId);
+      debug.log('ContractService: PDF hash:', pdfHash);
+      return pdfHash;
+    } catch (error: any) {
+      debug.error('ContractService: Error getting PDF hash:', error);
+      throw new Error(`Failed to get PDF hash: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get the merkle root for a specific token ID
+   */
+  async rootOf(tokenId: number): Promise<string> {
+    try {
+      debug.log('ContractService: Getting merkle root for token ID:', tokenId);
+      const merkleRoot = await this.readContract.rootOf(tokenId);
+      debug.log('ContractService: Merkle root:', merkleRoot);
+      return merkleRoot;
+    } catch (error: any) {
+      debug.error('ContractService: Error getting merkle root:', error);
+      throw new Error(`Failed to get merkle root: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get all tokens owned by a specific address
+   */
+  async getUserTokens(owner: string): Promise<number[]> {
+    try {
+      debug.log('ContractService: Getting all tokens for owner:', owner);
+      const balance = await this.balanceOf(owner);
+      const tokens: number[] = [];
+      
+      for (let i = 0; i < balance; i++) {
+        const tokenId = await this.tokenOfOwnerByIndex(owner, i);
+        tokens.push(tokenId);
+      }
+      
+      debug.log('ContractService: Found tokens:', tokens);
+      return tokens;
+    } catch (error: any) {
+      debug.error('ContractService: Error getting user tokens:', error);
+      throw new Error(`Failed to get user tokens: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get the contract owner (issuer) address
+   * The issuer is the address that deployed the contract and has permission to mint certificates
+   */
+  async getIssuer(): Promise<string> {
+    try {
+      debug.log('ContractService: Getting contract owner (issuer)');
+      const issuer = await this.readContract.owner();
+      debug.log('ContractService: Issuer address:', issuer);
+      return issuer;
+    } catch (error: any) {
+      debug.error('ContractService: Error getting issuer:', error);
+      throw new Error(`Failed to get issuer: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Check if a given contract address is the CertifaPro contract
+   */
+  isCertifaProContract(contractAddress: string): boolean {
+    return contractAddress.toLowerCase() === CONTRACT_ADDRESS.toLowerCase();
+  }
+
+  /**
+   * Verify if an NFT token belongs to the CertifaPro contract
+   * This is useful for external verification of NFT authenticity
+   * 
+   * Example usage:
+   * const verification = await contractService.verifyCertifaProNFT(6);
+   * if (verification.isCertifaPro && verification.tokenExists) {
+   *   console.log('This is a valid CertifaPro NFT!');
+   * }
+   */
+  async verifyCertifaProNFT(tokenId: number, contractAddress?: string): Promise<{
+    isCertifaPro: boolean;
+    contractAddress: string;
+    tokenExists: boolean;
+    owner?: string;
+  }> {
+    try {
+      const targetContractAddress = contractAddress || CONTRACT_ADDRESS;
+      const isCertifaPro = this.isCertifaProContract(targetContractAddress);
+      
+      let tokenExists = false;
+      let owner: string | undefined;
+
+      if (isCertifaPro) {
+        try {
+          owner = await this.ownerOf(tokenId);
+          tokenExists = true;
+        } catch (error) {
+          // Token doesn't exist or error occurred
+          tokenExists = false;
+        }
+      }
+
+      return {
+        isCertifaPro,
+        contractAddress: targetContractAddress,
+        tokenExists,
+        owner
+      };
+    } catch (error: any) {
+      debug.error('ContractService: Error verifying CertifaPro NFT:', error);
+      throw new Error(`Failed to verify NFT: ${error.message || 'Unknown error'}`);
     }
   }
 }

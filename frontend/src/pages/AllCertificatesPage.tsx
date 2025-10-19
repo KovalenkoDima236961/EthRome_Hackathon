@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, ExternalLink, Calendar, FileText, Filter } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/Card';
+import { useWeb3 } from '../contexts/Web3Context';
+import { ContractService } from '../services/contractService';
+import { Alert } from '../components/Alert';
 
 interface Certificate {
   id: string;
@@ -10,63 +13,198 @@ interface Certificate {
   issuedDate: string;
   hash: string;
   verified: boolean;
+  tokenURI?: string;
+  merkleRoot?: string;
+  issuer?: string;
+  contractAddress?: string;
+  isCertifaPro?: boolean;
+}
+
+interface NFTMetadata {
+  name?: string;
+  description?: string;
+  image?: string;
+  attributes?: Array<{
+    trait_type: string;
+    value: string;
+  }>;
 }
 
 export const AllCertificatesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'pending'>('all');
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { account, provider, isConnected } = useWeb3();
 
-  // Dummy data
-  const certificates: Certificate[] = [
-    {
-      id: '1',
-      title: 'Bachelor\'s Degree in Computer Science',
-      tokenId: '1234567890',
-      issuedDate: '15/05/2023',
-      hash: '0x742d35Cc6634C0532925a3b8448c9e7595f0bE',
-      verified: true
-    },
-    {
-      id: '2',
-      title: 'Professional Web Development Certificate',
-      tokenId: '1234567891',
-      issuedDate: '20/01/2024',
-      hash: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063',
-      verified: true
-    },
-    {
-      id: '3',
-      title: 'Advanced Blockchain Development',
-      tokenId: '1234567892',
-      issuedDate: '10/03/2024',
-      hash: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984',
-      verified: true
-    },
-    {
-      id: '4',
-      title: 'Machine Learning Fundamentals',
-      tokenId: '1234567893',
-      issuedDate: '05/06/2024',
-      hash: '0x3Cd3CaDbD9735AFf958023239c6A0638f3Cf7ad2',
-      verified: false
-    },
-    {
-      id: '5',
-      title: 'Cloud Architecture Certification',
-      tokenId: '1234567894',
-      issuedDate: '12/08/2024',
-      hash: '0x5AFf958023239c6A0638f3Cf7ad23Cd3CaDbD97',
-      verified: true
-    },
-    {
-      id: '6',
-      title: 'Cybersecurity Essentials',
-      tokenId: '1234567895',
-      issuedDate: '18/09/2024',
-      hash: '0x239c6A0638f3Cf7ad23Cd3CaDbD9735AFf95802',
-      verified: false
+  // Helper function to format address (shorten it)
+  const formatAddress = (address: string): string => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Reusable CertifaPro spinner component
+  const CertifaProSpinner = ({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
+    const sizeClasses = {
+      sm: 'w-4 h-4',
+      md: 'w-8 h-8', 
+      lg: 'w-16 h-16'
+    };
+
+    return (
+      <div className={`${sizeClasses[size]} relative flex items-center justify-center`}>
+        {/* Outer rotating ring with slower animation */}
+        <div 
+          className="absolute inset-0 rounded-full border-2 border-purple-500/20"
+          style={{ animation: 'spin 3s linear infinite' }}
+        >
+          <div 
+            className="absolute inset-0 rounded-full border-2 border-transparent border-t-purple-500"
+            style={{ animation: 'spin 3s linear infinite' }}
+          ></div>
+        </div>
+        
+        {/* Orbiting purple dots */}
+        {size === 'lg' && (
+          <div className="absolute inset-0">
+            {/* Top dot */}
+            <div 
+              className="w-1.5 h-1.5 bg-purple-400 rounded-full absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 animate-ping opacity-70"
+              style={{ animationDelay: '0s' }}
+            ></div>
+            {/* Right dot */}
+            <div 
+              className="w-1.5 h-1.5 bg-purple-400 rounded-full absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-1 animate-ping opacity-60"
+              style={{ animationDelay: '0.5s' }}
+            ></div>
+            {/* Bottom dot */}
+            <div 
+              className="w-1.5 h-1.5 bg-purple-400 rounded-full absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 animate-ping opacity-50"
+              style={{ animationDelay: '1s' }}
+            ></div>
+            {/* Left dot */}
+            <div 
+              className="w-1.5 h-1.5 bg-purple-400 rounded-full absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 animate-ping opacity-40"
+              style={{ animationDelay: '1.5s' }}
+            ></div>
+            {/* Additional corner dots */}
+            <div 
+              className="w-1 h-1 bg-purple-300 rounded-full absolute top-2 right-2 animate-ping opacity-30"
+              style={{ animationDelay: '2s' }}
+            ></div>
+            <div 
+              className="w-1 h-1 bg-purple-300 rounded-full absolute bottom-2 left-2 animate-ping opacity-30"
+              style={{ animationDelay: '2.5s' }}
+            ></div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Function to fetch NFT metadata from IPFS
+  const fetchMetadata = async (tokenURI: string): Promise<NFTMetadata | null> => {
+    try {
+      // Handle IPFS URLs
+      let url = tokenURI;
+      if (tokenURI.startsWith('ipfs://')) {
+        url = `https://ipfs.io/ipfs/${tokenURI.slice(7)}`;
+      }
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch metadata: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching metadata:', error);
+      return null;
     }
-  ];
+  };
+
+  // Function to fetch user's certificates from the smart contract
+  const fetchUserCertificates = async () => {
+    if (!account || !provider || !isConnected) {
+      setCertificates([]);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const contractService = new ContractService(provider);
+      const [tokenIds, issuer, contractAddress] = await Promise.all([
+        contractService.getUserTokens(account),
+        contractService.getIssuer(),
+        Promise.resolve(contractService.getContractAddress())
+      ]);
+      
+      const certificatePromises = tokenIds.map(async (tokenId) => {
+        try {
+          const [tokenURI, pdfHash, merkleRoot] = await Promise.all([
+            contractService.tokenURI(tokenId),
+            contractService.pdfHashOf(tokenId),
+            contractService.rootOf(tokenId)
+          ]);
+
+          const metadata = await fetchMetadata(tokenURI);
+          
+          // Extract title from metadata or use a default
+          const title = metadata?.name || `Certificate #${tokenId}`;
+          
+          // For now, we'll consider all NFTs as verified since they're minted through the contract
+          // In the future, you might want to add additional verification logic
+          const verified = true;
+          
+          // Extract issued date from metadata or use current date
+          let issuedDate = new Date().toLocaleDateString('en-GB');
+          if (metadata?.attributes) {
+            const dateAttr = metadata.attributes.find(attr => 
+              attr.trait_type.toLowerCase().includes('date') || 
+              attr.trait_type.toLowerCase().includes('issued')
+            );
+            if (dateAttr) {
+              issuedDate = dateAttr.value;
+            }
+          }
+
+          return {
+            id: tokenId.toString(),
+            title,
+            tokenId: tokenId.toString(),
+            issuedDate,
+            hash: pdfHash,
+            verified,
+            tokenURI,
+            merkleRoot,
+            issuer,
+            contractAddress,
+            isCertifaPro: contractService.isCertifaProContract(contractAddress)
+          } as Certificate;
+        } catch (error) {
+          console.error(`Error fetching data for token ${tokenId}:`, error);
+          return null;
+        }
+      });
+
+      const certificates = (await Promise.all(certificatePromises)).filter(Boolean) as Certificate[];
+      setCertificates(certificates);
+    } catch (error: any) {
+      console.error('Error fetching certificates:', error);
+      setError(`Failed to load certificates: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch certificates when component mounts or when account changes
+  useEffect(() => {
+    fetchUserCertificates();
+  }, [account, provider, isConnected]);
 
   const filteredCertificates = certificates.filter(cert => {
     const matchesSearch = cert.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -94,18 +232,51 @@ export const AllCertificatesPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            My{' '}
-            <span className="bg-gradient-to-r from-purple-400 to-teal-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">
+            <span className="text-white">My </span>
+            <span 
+              className="inline-block text-transparent bg-clip-text animate-gradient"
+              style={{
+                backgroundImage: 'linear-gradient(to right, #a855f7, #14b8a6, #a855f7)',
+                backgroundSize: '300% 100%',
+                animationDuration: '3s',
+                WebkitBackgroundClip: 'text'
+              }}
+            >
               Certificates
             </span>
           </h1>
-          <p className="text-xl text-gray-300">
+          <p className="text-xl text-gray-300 mb-6">
             View and manage your verified certificates
           </p>
+          
+          {/* Connection Status and Refresh Button */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            {!isConnected && (
+              <Alert 
+                type="warning" 
+                title="Wallet Not Connected"
+                message="Please connect your wallet to view your certificates"
+                className="max-w-md"
+              />
+            )}
+          </div>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="mb-8">
+            <Alert 
+              type="error" 
+              title="Error Loading Certificates"
+              message={error}
+              className="max-w-2xl mx-auto"
+            />
+          </div>
+        )}
+
         {/* Search and Filter Bar */}
+        {isConnected && (
         <div className="mb-8">
           <Card className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -137,22 +308,34 @@ export const AllCertificatesPage: React.FC = () => {
             </div>
           </Card>
         </div>
+        )}
 
         {/* Certificates Grid */}
+        {isLoading ? (
+          <div className="flex justify-center items-center py-16">
+            <div className="text-center">
+              {/* Single CertifaPro Spinner */}
+              <div className="mb-6 flex justify-center">
+                <CertifaProSpinner size="md" />
+              </div>
+              
+              <p className="text-gray-300 text-lg font-medium mb-2">Loading CertifaPro Certificates</p>
+              <p className="text-gray-400 text-sm mb-4">Fetching your verified certificates from the blockchain...</p>
+              
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCertificates.map((certificate) => (
             <Card key={certificate.id} hover className="relative">
               {/* Verification Badge */}
-              <div className="absolute top-4 right-4">
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    certificate.verified
-                      ? 'bg-gradient-to-r from-purple-500 to-teal-500 text-white'
-                      : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                  }`}
-                >
-                  {certificate.verified ? 'Verified' : 'Pending'}
+              <div className="absolute top-4 right-4 flex flex-col gap-1">
+                {/* CertifaPro Badge */}
+                {certificate.isCertifaPro && (
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                    Verified
                 </span>
+                )}
               </div>
 
               {/* Certificate Icon */}
@@ -178,6 +361,45 @@ export const AllCertificatesPage: React.FC = () => {
                 <span className="text-sm text-white ml-1">{certificate.issuedDate}</span>
               </div>
 
+              {/* Issuer */}
+              {certificate.issuer && (
+                <div className="mb-3">
+                  <p className="text-sm text-gray-400 mb-1">Issuer:</p>
+                  <button
+                    onClick={() => {
+                      const explorerUrl = `https://blockscout-passet-hub.parity-testnet.parity.io/address/${certificate.issuer}`;
+                      window.open(explorerUrl, '_blank');
+                    }}
+                    className="text-white font-mono text-xs break-all cursor-pointer hover:text-purple-400 transition-colors"
+                    title={`View issuer on explorer: ${certificate.issuer}`}
+                  >
+                    {formatAddress(certificate.issuer)}
+                  </button>
+                </div>
+              )}
+
+              {/* Contract Address */}
+              {certificate.contractAddress && (
+                <div className="mb-3">
+                  <p className="text-sm text-gray-400 mb-1">Contract:</p>
+                  <button
+                    onClick={() => {
+                      const explorerUrl = `https://blockscout-passet-hub.parity-testnet.parity.io/address/${certificate.contractAddress}`;
+                      window.open(explorerUrl, '_blank');
+                    }}
+                    className="text-white font-mono text-xs break-all cursor-pointer hover:text-purple-400 transition-colors"
+                    title={`View contract on explorer: ${certificate.contractAddress}`}
+                  >
+                    {formatAddress(certificate.contractAddress)}
+                  </button>
+                  {certificate.isCertifaPro && (
+                    <span className="ml-2 text-xs text-green-400 font-semibold">
+                      ✓ CertifaPro
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Blockchain Hash */}
               <div className="mb-4">
                 <p className="text-sm text-gray-400 mb-1">Hash:</p>
@@ -192,6 +414,11 @@ export const AllCertificatesPage: React.FC = () => {
                 size="sm"
                 className="w-full group"
                 disabled={!certificate.verified}
+                onClick={() => {
+                  const contractService = new ContractService(provider!);
+                  const explorerUrl = `https://blockscout-passet-hub.parity-testnet.parity.io/token/${contractService.getContractAddress()}/instance/${certificate.tokenId}`;
+                  window.open(explorerUrl, '_blank');
+                }}
               >
                 View on Explorer
                 <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -199,49 +426,39 @@ export const AllCertificatesPage: React.FC = () => {
             </Card>
           ))}
         </div>
+        )}
 
         {/* Empty State */}
-        {filteredCertificates.length === 0 && (
+        {!isLoading && filteredCertificates.length === 0 && (
           <div className="text-center py-16">
             <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-400 mb-2">
-              {searchTerm || filterStatus !== 'all' ? 'No certificates found' : 'No certificates yet'}
+              {!isConnected 
+                ? 'Connect your wallet to view certificates'
+                : searchTerm || filterStatus !== 'all' 
+                  ? 'No certificates found' 
+                  : 'No certificates yet'
+              }
             </h3>
             <p className="text-gray-500 mb-6">
-              {searchTerm || filterStatus !== 'all' 
+              {!isConnected
+                ? 'Connect your wallet to see your NFT certificates'
+                : searchTerm || filterStatus !== 'all' 
                 ? 'Try adjusting your search or filter criteria'
                 : 'Upload and verify your first certificate to get started'
               }
             </p>
-            {!searchTerm && filterStatus === 'all' && (
-              <Button>
+            {!isConnected ? (
+              <Button onClick={() => window.location.href = '/'}>
+                Connect Wallet
+              </Button>
+            ) : !searchTerm && filterStatus === 'all' && (
+              <Button onClick={() => window.location.href = '/mint'}>
                 Mint Your First Certificate
               </Button>
             )}
           </div>
         )}
-
-        {/* Stats */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="text-center">
-            <div className="text-3xl font-bold text-white mb-2">
-              {certificates.length}
-            </div>
-            <div className="text-gray-400">Total Certificates</div>
-          </Card>
-          <Card className="text-center">
-            <div className="text-3xl font-bold text-green-400 mb-2">
-              {certificates.filter(c => c.verified).length}
-            </div>
-            <div className="text-gray-400">Verified</div>
-          </Card>
-          <Card className="text-center">
-            <div className="text-3xl font-bold text-yellow-400 mb-2">
-              {certificates.filter(c => !c.verified).length}
-            </div>
-            <div className="text-gray-400">Pending</div>
-          </Card>
-        </div>
       </div>
     </div>
   );

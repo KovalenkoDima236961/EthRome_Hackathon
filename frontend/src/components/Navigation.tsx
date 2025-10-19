@@ -24,14 +24,17 @@ export const Navigation: React.FC = () => {
                 <Shield className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-bold gradient-text">
-                <GradientText
-                  colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
-                  animationSpeed={5}
-                  showBorder={false}
-                  className="inline"
-                >
-                  CertifyChain
-                </GradientText>
+              <span 
+                className="inline-block text-transparent bg-clip-text animate-gradient"
+                style={{
+                  backgroundImage: 'linear-gradient(to right, #a855f7, #14b8a6, #a855f7)',
+                  backgroundSize: '300% 100%',
+                  animationDuration: '3s',
+                  WebkitBackgroundClip: 'text'
+                }}
+              >
+                CertifyChain
+              </span>
               </span>
             </Link>
 
