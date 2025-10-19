@@ -31,3 +31,5 @@ Smart Contract dApp Development on Paseo testnet – $3400
 	•	Verification model (no ZK): Rely on on-chain commitments and signed attestations to confirm disclosed fields match the underlying private token—without revealing extra data.
 	•	Why it fits the bounty: Original Solidity dApp, deployed on Polkadot EVM testnet, clear UX (mint, derive views, share links), and practical impact for verifiable education credentials.
     	•	Frontend: Minimal UI to upload/verify a certificate, mint the private SBT, and generate view NFTs for selective disclosure.
+
+More information about the project, you can see in our github repository

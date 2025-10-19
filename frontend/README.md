@@ -22,18 +22,19 @@ A modern Web3 certificate verification platform built with React, TypeScript, an
 - **Context API** for theme management
 
 ## Getting Started
+1. If you want to use your own smart contract, change it in `src/constants.ts`
 
-1. Install dependencies:
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Start the development server:
+3. Start the development server:
 ```bash
 npm run dev
 ```
 
-3. Open your browser and navigate to `http://localhost:5173`
+4. Open your browser and navigate to `http://localhost:5173`
 
 ## Project Structure
 
@@ -73,13 +74,3 @@ The application uses a consistent design system with:
 - **Components**: Reusable, accessible UI components
 - **Themes**: Dark mode by default with light mode support
 - **Animations**: Smooth transitions and hover effects
-
-## Future Enhancements
-
-This is currently a UI-only implementation. Future development will include:
-
-- Blockchain integration (Web3 wallet connection)
-- Smart contract interactions
-- File upload and verification logic
-- NFT minting functionality
-- Backend API integration
