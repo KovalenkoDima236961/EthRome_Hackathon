@@ -1,11 +1,11 @@
-# CertifyChain — A Secure Bridge from Online Certificates to Verifiable Self-Bound Tokens
+# CertifyChain — A Secure Bridge from Online Certificates to Verifiable soulbound Tokens
 <img width="1172" height="819" alt="image" src="https://github.com/user-attachments/assets/9407e9c2-5ed2-4be0-81b0-30a8251c2c38" />
 
 Today, the number of fake and forged certificates is growing quickly, making it hard to know which ones are real. Certificates from platforms like Udemy, Coursera, AWS, or Cisco can be checked manually, but this process is slow and not practical for many users.
 
-CertifyChain solves this problem by letting users create a self-bound NFT from their verified certificate. This token works as clear, on-chain proof that the certificate is real, original, and not fake.
+CertifyChain solves this problem by letting users create a soulbound NFT from their verified certificate. This token works as clear, on-chain proof that the certificate is real, original, and not fake.
 
-CertifyChain is a platform that transforms traditional Web2 course certificates — such as those issued by platforms like Udemy — into self-bound NFT tokens on the blockchain. These tokens serve as verifiable proof that a specific user has successfully obtained a given certificate. In other words, CertifyChain acts as a bridge between Web2 achievements and the Web3 ecosystem.
+CertifyChain is a platform that transforms traditional Web2 course certificates — such as those issued by platforms like Udemy — into soulbound NFT tokens on the blockchain. These tokens serve as verifiable proof that a specific user has successfully obtained a given certificate. In other words, CertifyChain acts as a bridge between Web2 achievements and the Web3 ecosystem.
 
 To issue a token, the user simply uploads their certificate in PDF format. The system then performs a two-step verification process:
 
@@ -13,7 +13,7 @@ To issue a token, the user simply uploads their certificate in PDF format. The s
 
 - On-chain validation — the system checks that no identical certificate has been minted before, ensuring its uniqueness.
 
-Once both checks are successfully completed, the user can mint a self-bound NFT directly to their wallet. This NFT permanently proves ownership of the specific certificate and cannot be transferred, making it a trustworthy credential in the Web3 world.
+Once both checks are successfully completed, the user can mint a soulbound NFT directly to their wallet. This NFT permanently proves ownership of the specific certificate and cannot be transferred, making it a trustworthy credential in the Web3 world.
 
 <img width="707" height="728" alt="image" src="https://github.com/user-attachments/assets/16603c7c-a68e-47d2-8769-884b207280e8" />
 
@@ -31,14 +31,48 @@ If a user submits an invalid certificate, the verification process will reject i
 
 After successful verification, the system encrypts the entire certificate file and sends it to the smart contract, which checks whether this certificate has already been published on-chain.
 
-Finally, the user can mint a self-bound NFT, which serves as a verifiable, non-transferable proof of certificate ownership.
+Finally, the user can mint a soulbound NFT, which serves as a verifiable, non-transferable proof of certificate ownership.
 
-# TODO: картинка с нашего сайта как выглядит отображение токенов
+**Non-decrypted view (Private NFT)**  
+<img src="https://github.com/user-attachments/assets/9af77182-bb90-47ea-b16c-8e60896214cd" alt="Non-decrypted view of the Private NFT" width="420">
 
-Authentication based on Zero-Knowledge (ZK) proofs ensure that users are properly authenticated and cannot submit third-party certificates.
+**Dencrypted view (Private NFT)**  
+<img src="https://github.com/user-attachments/assets/54f09eb2-d4ac-47e4-b6bb-230f537bed4b" alt="Encrypted view of the Private NFT" width="420">
 
-ZK-proof integration has already been successfully implemented for Ethereum first-version prototype, but deployment on Polkadot encountered several technical problems. As a result, this feature was not included in the current version of the project, but it remains a key priority for future releases.
+## Controlled Disclosure and Access
+“View” NFTs let the holder of a private CertificateNFT share only selected certificate attributes. A View NFT is a non-transferable token that points to the base certificate and encodes an access policy (time-limited and/or link-gated). Only the certificate holder can mint a View NFT, ensuring holder-controlled disclosure.
 
-ZK-proof workflow:
+How it works:
+The holder decrypts their private certificate locally with a wallet-derived key (the key and plaintext never leave the device), chooses which fields to reveal, and creates a disclosure package (fields + proofs). They then mint a View NFT that references the base certificate and locks its transfer.
 
-# TODO: распиши как это работает, коротко, но четко, покажи картинки и диаграмы из твоей бакаларки
+Disclosure modes:
+-	Public view: the selected fields (and their proofs) are published as open JSON.
+-	Link-based view: the selected fields (and proofs) are encrypted client-side; access is granted via a shareable link that automatically expires at the time set by the holder.
+
+After minting, the contract stores the reference to the base certificate and marks the View NFT as locked (non-transferable). The holder can create multiple View NFTs with different field sets and expirations for different audiences.
+
+## Verification Paths
+Next step (after completing View NFTs): add zero-knowledge verification so anyone can confirm that a disclosed attribute in a View NFT comes from its underlying private CertificateNFT—without trusting our backend and without seeing raw values, salts, or Merkle branches.
+
+Main idea: the holder generates a zk proof off-chain that recomputes the commitment from the selected fields to the certificate’s on-chain Merkle root. The smart contract verifies this proof, ties it to a fixed code identity, and checks it against the root stored in CertificateNFT. This delivers content-based verification, protects privacy, prevents replay, and avoids reliance on a trusted setup. We plan to implement this with a general-purpose zkVM (e.g., RISC Zero) so we can keep the workflow simple while enabling on-chain verification of the proof.
+
+## Local Setup
+To run the app locally, use the README inside each subfolder.
+
+### Frontend
+Go to frontend/ and follow frontend/README.md for install and run steps.
+
+### Backend
+Go to backend/ and follow backend/README.md for install and run steps.
+
+### Local IPFS (required)
+Install and run a local IPFS (Kubo) node. Ensure the HTTP API is reachable at http://localhost:5001 (gateway typically http://localhost:8080). Start it with:
+```bash
+ipfs init   # first time only
+ipfs daemon
+```
+You may also use the ipfs service in docker-compose.yml. If your IPFS API is not on http://localhost:5001, set the backend environment variable accordingly (e.g., IPFS_API_URL=http://<host>:<port>).
+
+
+### Docker Compose status (backend)
+At the moment, the docker-compose.yml does not work for the backend service. Please run the backend outside Docker (per backend/README.md). The compose file may still be used for the IPFS service and the frontend dev server.
