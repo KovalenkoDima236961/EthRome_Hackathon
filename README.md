@@ -1,4 +1,4 @@
-# CertifyChain — secure transfer of online certifications into self-bound tokens
+# CertifyChain — A Secure Bridge from Online Certificates to Verifiable Self-Bound Tokens
 <img width="1172" height="819" alt="image" src="https://github.com/user-attachments/assets/9407e9c2-5ed2-4be0-81b0-30a8251c2c38" />
 
 CertifyChain is a platform that transforms traditional Web2 course certificates — such as those issued by platforms like Udemy — into self-bound NFT tokens on the blockchain. These tokens serve as verifiable proof that a specific user has successfully obtained a given certificate. In other words, CertifyChain acts as a bridge between Web2 achievements and the Web3 ecosystem.
