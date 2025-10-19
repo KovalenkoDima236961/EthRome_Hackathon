@@ -573,7 +573,7 @@ export const AllCertificatesPage: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full group rounded-lg border border-gray-700/70 bg-gray-800/50 text-gray-200 hover:bg-gray-800 hover:border-gray-600 transition-all"
+                  className="w-full group relative overflow-hidden rounded-lg px-4 py-2 font-medium border border-white/15 bg-white/[0.03] text-gray-300 hover:text-white hover:bg-white/[0.08] hover:border-white/25 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/40 flex items-center justify-center gap-2"
                   disabled={!certificate.verified}
                   onClick={() => {
                     const contractService = new ContractService(provider!);
@@ -581,10 +581,8 @@ export const AllCertificatesPage: React.FC = () => {
                     window.open(explorerUrl, '_blank');
                   }}
                 >
-                  <span className="inline-flex items-center justify-center">
-                    View on Explorer
-                    <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
+                  <span>View on Explorer</span>
+                  <ExternalLink className="w-4 h-4 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
                 </Button>
               </div>
             </Card>
