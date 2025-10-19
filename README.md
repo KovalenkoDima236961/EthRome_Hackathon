@@ -5,7 +5,7 @@ CertifyChain is a platform that transforms traditional Web2 course certificates 
 
 To issue a token, the user simply uploads their certificate in PDF format. The system then performs a two-step verification process:
 
-- Server-side validation — the certificate is verified through the issuing authority’s API to confirm its authenticity.
+- Server-side validation — the certificate is verified through the issuing authority’s API to confirm its authenticity. For current version of project it was created functionality to verify the certificate for Udemy, but in the same way it caan be expanded for another platforms like: Coursera, AWS, Cisco etc.
 
 - On-chain validation — the system checks that no identical certificate has been minted before, ensuring its uniqueness.
 
