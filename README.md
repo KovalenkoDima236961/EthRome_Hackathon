@@ -94,3 +94,7 @@ You may also use the ipfs service in docker-compose.yml.
 
 ### Docker Compose status (backend)
 At the moment, the docker-compose.yml does not work for the backend service. Please run the backend outside Docker (per backend/README.md). The compose file may still be used for the IPFS service and the frontend dev server.
+
+
+### Video
+https://youtu.be/RmAeutZutkg
