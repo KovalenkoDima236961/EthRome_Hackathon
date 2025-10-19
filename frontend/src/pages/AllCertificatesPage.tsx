@@ -467,7 +467,7 @@ export const AllCertificatesPage: React.FC = () => {
               </div>
 
               {/* Issuer */}
-              {/* {certificate.issuer && (
+              {certificate.issuer && (
                 <div className="mb-3">
                   <p className="text-sm text-gray-400 mb-1">Issuer:</p>
                   <button
@@ -481,10 +481,10 @@ export const AllCertificatesPage: React.FC = () => {
                     {formatAddress(certificate.issuer)}
                   </button>
                 </div>
-              )} */}
+              )}
 
               {/* Contract Address */}
-              {/* {certificate.contractAddress && (
+              {certificate.contractAddress && (
                 <div className="mb-3">
                   <p className="text-sm text-gray-400 mb-1">Contract:</p>
                   <button
@@ -503,7 +503,7 @@ export const AllCertificatesPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-              )} */}
+              )}
 
               {/* Blockchain Hash */}
               <div className="mb-4">
