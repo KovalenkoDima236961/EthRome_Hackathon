@@ -44,14 +44,17 @@ export default function LandingPage() {
             
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
               Secure Your Certificates on{" "}
-              <GradientText
-                colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
-                animationSpeed={5}
-                showBorder={false}
-                className="inline"
-              >
-                Polkadot
-              </GradientText>
+            <span
+              className="inline-block text-transparent bg-clip-text animate-gradient"
+              style={{
+                backgroundImage: 'linear-gradient(to right, #a855f7, #14b8a6, #a855f7)',
+                backgroundSize: '300% 100%',
+                animationDuration: '3s',
+                WebkitBackgroundClip: 'text'
+              }}
+            >
+              Polkadot
+            </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Transform academic and professional certificates into verifiable NFTs on Polkadot blockchain. 
@@ -76,7 +79,7 @@ export default function LandingPage() {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/mint">
-                <Button variant="hero" size="xl" className="gap-2 animate-glow-pulse">
+                <Button variant="hero" size="xl" className="gap-2 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300">
                   Verify Certificate
                   <ArrowRight className="h-5 w-5" />
                 </Button>
