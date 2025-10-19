@@ -250,4 +250,9 @@ Returned values:
 
 ---
 
+## ⚠️ Disclaimer
+Certificate data recognition (OCR) may sometimes return **inaccurate or incomplete results** due to PDF quality, fonts, layout versions, and other factors. We will **continue improving** accuracy in upcoming releases.
+
+For testing, please use the **sample certificate** provided in this folder (e.g., `./UC-e9d39135-725a-4bbb-99a4-11b148c44822.pdf`). In case of discrepancies, verify the data on the certificate’s public page.
+
 ## License

@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { debug } from '../utils/debug';
+import { CONTRACT_ADDRESS } from '@/constants';
 
 // Contract ABI - only the functions we need
 const CONTRACT_ABI = [
@@ -74,9 +75,6 @@ const CONTRACT_ABI = [
     "type":"function"
   }
 ];
-
-// Contract configuration
-export const CONTRACT_ADDRESS = '0x67deeAcfA815903f48605d85B5279D9c729969B0';
 
 // Network configuration for Polkadot Paseo Passethub
 const NETWORK_CONFIG = {

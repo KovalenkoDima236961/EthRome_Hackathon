@@ -5,7 +5,7 @@ import { Card } from '../components/Card';
 import { StepIndicator } from '../components/StepIndicator';
 import { Alert } from '../components/Alert';
 import { useWeb3 } from '../contexts/Web3Context';
-import { CONTRACT_ADDRESS, ContractService } from '../services/contractService';
+import { ContractService } from '../services/contractService';
 import { CertificateService } from '../services/certificateService';
 import type { CertificateVerificationResponse } from '../types/certificate';
 import { generatePdfHash, type Json } from '../utils/pdfUtils';
@@ -13,7 +13,7 @@ import { debug } from '../utils/debug';
 import { CertificateDisplay } from '../components/CertificateDisplay';
 import { deriveSymmetricKeyFromWallet, aesEncryptBytes, aesEncryptJson } from '../utils/cryptographyUtils';
 import { uploadBlobToIpfs } from "../utils/ipfs_util";
-import GradientText from "../components/GradientText";
+import { CONTRACT_ADDRESS } from '@/constants';
 
 export const MintCertificatePage: React.FC = () => {
   const { isConnected, provider, account } = useWeb3();
