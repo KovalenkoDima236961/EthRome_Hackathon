@@ -1,0 +1,33 @@
+PROJECT NAME
+
+CertifyChain
+
+DESCRIPTION OF THE PROJECT (2 lines)
+
+CertifyChain turns online certificates (e.g., Udemy) into private soulbound NFTs, then derives “view” NFTs for selective disclosure of chosen fields. On-chain commitments and signatures verify authenticity without exposing full data.
+
+TELEGRAM USER NAME (OPTIONAL!)
+
+tg: https://t.me/dimon22856
+https://t.me/@delik17
+
+REPOSITORY WITH THE PROJECT’S CODE
+
+https://github.com/KovalenkoDima236961/EthRome_Hackathon
+
+VIDEO DEMO
+
+Contract address(es) and chain(s)
+	•	CertificatePrivateNFT: 0x67deeAcfA815903f48605d85B5279D9c729969B0
+	•	CertificateViewNFT: 
+	•	Chain(s): <insert chain(s), e.g., Paseo testnet / EVM-compatible>
+
+    Bounties (how we integrated sponsor tech)
+
+Smart Contract dApp Development on Paseo testnet – $3400
+	•	What we built: A privacy-preserving credential system using two contracts:
+	1.	CertificatePrivateNFT — mints a soulbound NFT per verified certificate; stores an on-chain cryptographic commitment (hash), while encrypted attributes remain off-chain.
+	2.	CertificateViewNFT — issues shareable “view” NFTs that disclose only selected fields.
+	•	Verification model (no ZK): Rely on on-chain commitments and signed attestations to confirm disclosed fields match the underlying private token—without revealing extra data.
+	•	Why it fits the bounty: Original Solidity dApp, deployed on Polkadot EVM testnet, clear UX (mint, derive views, share links), and practical impact for verifiable education credentials.
+    	•	Frontend: Minimal UI to upload/verify a certificate, mint the private SBT, and generate view NFTs for selective disclosure.

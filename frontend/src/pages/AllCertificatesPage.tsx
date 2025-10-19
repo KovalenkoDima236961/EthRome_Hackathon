@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ExternalLink, Calendar, FileText, Filter } from 'lucide-react';
+import { Search, ExternalLink, FileText, Filter, Unlock, Copy, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/Card';
 import { useWeb3 } from '../contexts/Web3Context';
 import { ContractService } from '../services/contractService';
 import { Alert } from '../components/Alert';
+import { deriveSymmetricKeyFromWallet, decryptData } from '@/utils/cryptographyUtils';
 
 interface Certificate {
   id: string;
   title: string;
   tokenId: string;
-  issuedDate: string;
+  issuedDate?: string;
   hash: string;
   verified: boolean;
   tokenURI?: string;
@@ -28,7 +29,19 @@ interface NFTMetadata {
     trait_type: string;
     value: string;
   }>;
+  properties?: {
+    encrypted_pdf?: string;
+    encrypted_fields?: string;
+    merkle_root?: string;
+    merkle_version?: number;
+  }
 }
+
+const ipfsToHttp = (uri: string): string =>
+  uri.startsWith('ipfs://') ? uri.replace('ipfs://', 'http://127.0.0.1:8080/ipfs/') : uri;
+
+const isRecord = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null;
+
 
 export const AllCertificatesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,7 +49,9 @@ export const AllCertificatesPage: React.FC = () => {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+  const [decryptedMap, setDecryptedMap] = useState<Record<string, unknown>>({});
+  const [openTokenId, setOpenTokenId] = useState<string | null>(null);
+
   const { account, provider, isConnected } = useWeb3();
 
   // Helper function to format address (shorten it)
@@ -159,24 +174,11 @@ export const AllCertificatesPage: React.FC = () => {
           // For now, we'll consider all NFTs as verified since they're minted through the contract
           // In the future, you might want to add additional verification logic
           const verified = true;
-          
-          // Extract issued date from metadata or use current date
-          let issuedDate = new Date().toLocaleDateString('en-GB');
-          if (metadata?.attributes) {
-            const dateAttr = metadata.attributes.find(attr => 
-              attr.trait_type.toLowerCase().includes('date') || 
-              attr.trait_type.toLowerCase().includes('issued')
-            );
-            if (dateAttr) {
-              issuedDate = dateAttr.value;
-            }
-          }
 
           return {
             id: tokenId.toString(),
             title,
             tokenId: tokenId.toString(),
-            issuedDate,
             hash: pdfHash,
             verified,
             tokenURI,
@@ -205,6 +207,116 @@ export const AllCertificatesPage: React.FC = () => {
   useEffect(() => {
     fetchUserCertificates();
   }, [account, provider, isConnected]);
+
+  const decryptCertificate = async (cert: Certificate): Promise<void> => {
+    if (!cert.tokenURI) {
+      console.error('No tokenURI found for certificate', cert.tokenId);
+      return;
+    }
+    try {
+      const metaUrl = ipfsToHttp(cert.tokenURI);
+      const metaResp = await fetch(metaUrl);
+      
+      if (!metaResp.ok) throw new Error(`Failed to fetch metadata: ${metaResp.status} ${metaResp.statusText}`);
+      const metadata: NFTMetadata = await metaResp.json();
+
+      const encryptedFieldsIpfs = metadata.properties?.encrypted_fields;
+      if (!encryptedFieldsIpfs || typeof encryptedFieldsIpfs !== 'string') {
+        throw new Error('Metadata.properties.encrypted_fields is missing');
+      }
+
+      const encUrl = ipfsToHttp(encryptedFieldsIpfs);
+      const encResp = await fetch(encUrl);
+      if (!encResp.ok) throw new Error(`Failed to fetch encrypted fields: ${encResp.status} ${encResp.statusText}`);
+      const encryptedBytes = new Uint8Array(await encResp.arrayBuffer());
+
+      if (!provider) throw new Error('Wallet provider not available');
+
+      const key = await deriveSymmetricKeyFromWallet(provider);
+      const decryptedBytes = decryptData(encryptedBytes, key);
+      const rawText = new TextDecoder('utf-8').decode(decryptedBytes);
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(rawText);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new Error('Failed to parse decrypted JSON: ' + msg);
+      }
+      if (!isRecord(parsed)) {
+        throw new Error('Decrypted payload is not a JSON object');
+      }
+
+      setDecryptedMap(prev => ({...prev, [cert.tokenId]: parsed }));
+      setOpenTokenId(cert.tokenId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('Failed to decrypt certificate:', msg);
+      alert('Failed to decrypt: ' + msg);
+    }
+  }
+
+  const formatLabel = (key: string): string => {
+    const cleaned = key.replace(/^__+/, '').replace(/[_-]+/g, ' ').trim();
+    return cleaned.replace(/\b\w/g, (m) => m.toUpperCase());
+  };
+
+  const isLikelyIdOrHash = (k: string, v: unknown): boolean => {
+    if (typeof v !== 'string') return false;
+    return /(id|hash|tx|address)/i.test(k) || v.length > 42;
+  };
+
+
+  const renderDecryptedFields = (data: unknown): React.ReactNode => {
+    if (!isRecord(data)) return null;
+    const entries = Object
+      .entries(data as Record<string, unknown>)
+      .filter(([k]) => !k.startsWith('__'))
+      .filter(([k]) => k.toLowerCase() !== 'certificate_ipfs_url');
+    if (entries.length === 0)
+      return <p className="text-gray-300 text-sm">No public fields to display.</p>;
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {entries.map(([key, value]) => {
+          const label = formatLabel(key);
+          const isSimple = ['string', 'number', 'boolean'].includes(typeof value);
+          const isIpfs = typeof value === 'string' && value.startsWith('ipfs://');
+          const isLong = isLikelyIdOrHash(key, value);
+
+          return (
+            <div
+              key={key}
+              className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:bg-white/[0.07] transition-colors"
+            >
+              <p className="text-[11px] font-medium tracking-wider text-gray-400 mb-2">
+                {label}
+              </p>
+
+              {isSimple ? (
+                isIpfs ? (
+                  <button
+                    onClick={() => window.open(ipfsToHttp(String(value)), '_blank')}
+                    className={`text-sm break-words text-purple-300 hover:text-purple-200 underline ${isLong ? 'font-mono' : ''} rounded-md shadow-sm`}
+                    title="Open on IPFS gateway"
+                  >
+                    {String(value)}
+                  </button>
+                ) : (
+                  <p className={`text-sm break-words text-white ${isLong ? 'font-mono' : ''}`}>
+                    {String(value)}
+                  </p>
+                )
+              ) : (
+                <pre className="text-xs text-gray-300 overflow-auto max-h-48 whitespace-pre-wrap break-words">{JSON.stringify(value, null, 2)}</pre>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
 
   const filteredCertificates = certificates.filter(cert => {
     const matchesSearch = cert.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -354,13 +466,6 @@ export const AllCertificatesPage: React.FC = () => {
                 <p className="text-white font-mono text-sm">{certificate.tokenId}</p>
               </div>
 
-              {/* Issued Date */}
-              <div className="flex items-center mb-3">
-                <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                <span className="text-sm text-gray-400">Issued:</span>
-                <span className="text-sm text-white ml-1">{certificate.issuedDate}</span>
-              </div>
-
               {/* Issuer */}
               {/* {certificate.issuer && (
                 <div className="mb-3">
@@ -408,21 +513,80 @@ export const AllCertificatesPage: React.FC = () => {
                 </p>
               </div>
 
-              {/* Action Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full group"
-                disabled={!certificate.verified}
-                onClick={() => {
-                  const contractService = new ContractService(provider!);
-                  const explorerUrl = `https://blockscout-passet-hub.parity-testnet.parity.io/token/${contractService.getContractAddress()}/instance/${certificate.tokenId}`;
-                  window.open(explorerUrl, '_blank');
-                }}
-              >
-                View on Explorer
-                <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
+              {openTokenId === certificate.tokenId && decryptedMap[certificate.tokenId] !== undefined && (
+                <div className="mb-4 rounded-lg border border-purple-500/30 bg-purple-500/10 p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-purple-300">Decrypted Fields</h4>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 py-1 text-xs border-gray-700/70 bg-gray-800/50 text-gray-200 hover:bg-gray-800"
+                        onClick={async () => {
+                          const json = JSON.stringify(decryptedMap[certificate.tokenId], null, 2);
+                          try {
+                            await navigator.clipboard.writeText(json);
+                          } catch (_) {}
+                        }}
+                      >
+                        <Copy className="w-3.5 h-3.5 mr-1" /> Copy JSON
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 py-1 text-xs border-gray-700/70 bg-gray-800/50 text-gray-200 hover:bg-gray-800"
+                        onClick={() => {
+                          setOpenTokenId(null);
+                          setDecryptedMap(prev => {
+                            const { [certificate.tokenId]: _removed, ...rest } = prev;
+                            return rest;
+                          });
+                        }}
+                      >
+                        <X className="w-3.5 h-3.5 mr-1" /> Hide
+                      </Button>
+                    </div>
+                  </div>
+                  {renderDecryptedFields(decryptedMap[certificate.tokenId])}
+                </div>
+              )}
+
+
+              {/* Action Buttons */}
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  size="sm"
+                  disabled={decryptedMap[certificate.tokenId] !== undefined}
+                  className={`w-full relative overflow-hidden rounded-lg px-4 py-2 font-medium bg-gradient-to-r from-purple-600 to-indigo-500 text-white shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/60 ${decryptedMap[certificate.tokenId] !== undefined ? 'opacity-60 cursor-not-allowed hover:shadow-none' : 'hover:shadow-purple-500/25'}`}
+                  onClick={() => {
+                    if (decryptedMap[certificate.tokenId] !== undefined) return;
+                    decryptCertificate(certificate);
+                  }}
+                >
+                  <span className="inline-flex items-center justify-center">
+                    <Unlock className="w-4 h-4 mr-2" />
+                    {decryptedMap[certificate.tokenId] !== undefined ? 'Decrypted ✓' : 'Decrypt'}
+                  </span>
+                  <span className="absolute inset-0 opacity-0 hover:opacity-20 bg-white transition-opacity" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full group rounded-lg border border-gray-700/70 bg-gray-800/50 text-gray-200 hover:bg-gray-800 hover:border-gray-600 transition-all"
+                  disabled={!certificate.verified}
+                  onClick={() => {
+                    const contractService = new ContractService(provider!);
+                    const explorerUrl = `https://blockscout-passet-hub.parity-testnet.parity.io/token/${contractService.getContractAddress()}/instance/${certificate.tokenId}`;
+                    window.open(explorerUrl, '_blank');
+                  }}
+                >
+                  <span className="inline-flex items-center justify-center">
+                    View on Explorer
+                    <ExternalLink className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

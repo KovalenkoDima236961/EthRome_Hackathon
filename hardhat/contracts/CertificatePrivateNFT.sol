@@ -96,6 +96,13 @@ contract CertificatePrivateNFT is ERC721URIStorage, ERC721Enumerable, Ownable, I
         return _mintInternal(to, _tokenURI, _pdfHash, _merkleRoot);
     }
 
+    function tokenURI(uint256 tokenId)
+        public view override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
+    }
+
     function _mintInternal(
         address to,
         string calldata _tokenURI,
@@ -140,11 +147,10 @@ contract CertificatePrivateNFT is ERC721URIStorage, ERC721Enumerable, Ownable, I
         revert Soulbound();
     }
 
-    function _update(
-        address to,
-        uint256 tokenId,
-        address auth
-    ) internal override(ERC721, ERC721Enumerable) returns (address) {
+    function _update(address to, uint256 tokenId, address auth)
+        internal override(ERC721, ERC721Enumerable)
+        returns (address)
+    {
         address from = _ownerOf(tokenId);
         if (from != address(0) && to != address(0)) revert Soulbound();
         return super._update(to, tokenId, auth);
@@ -173,6 +179,12 @@ contract CertificatePrivateNFT is ERC721URIStorage, ERC721Enumerable, Ownable, I
         emit Unlocked(tokenId);
     }
 
+    function _increaseBalance(address account, uint128 value)
+        internal override(ERC721, ERC721Enumerable)
+    {
+        super._increaseBalance(account, value);
+    }
+
     // Views
     function rootOf(uint256 tokenId) external view returns (bytes32) {
         if (_ownerOf(tokenId) == address(0)) revert NonexistentToken();
@@ -193,9 +205,10 @@ contract CertificatePrivateNFT is ERC721URIStorage, ERC721Enumerable, Ownable, I
         return true;
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721, ERC721Enumerable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public view override(ERC721URIStorage, ERC721Enumerable)
+        returns (bool)
+    {
         return
             interfaceId == type(IERC5192).interfaceId ||
             super.supportsInterface(interfaceId);
