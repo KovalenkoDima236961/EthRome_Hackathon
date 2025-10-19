@@ -1,29 +1,50 @@
-version: "3.9"
-
 services:
-  ipfs_node:
-    
-  frontend:
-    build: ./frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+  ipfs:
+    image: ipfs/kubo:latest
+    restart: unless-stopped
     ports:
-      - "5173:5173"
-    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
-    depends_on:
-      - backend
+      - "4001:4001/tcp"   # swarm (tcp)
+      - "4001:4001/udp"   # swarm (udp/quic)
+      - "5001:5001"       # API
+      - "8080:8080"       # Gateway
+    volumes:
+      - ipfs_data:/data/ipfs
+      - ipfs_export:/export
+    healthcheck:
+      test: ["CMD", "ipfs", "id", "--api", "/ip4/127.0.0.1/tcp/5001"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   backend:
     build: ./backend
     working_dir: /app/src
     volumes:
       - ./backend/src:/app/src
-      - ./backend/requirements.txt:/app/requirements.txt:ro
     environment:
       - PYTHONUNBUFFERED=1
     env_file:
       - ./backend/.env
     ports:
       - "8000:8000"
+    depends_on:
+      ipfs:
+        condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    shm_size: "1gb"
+
+  frontend:
+    build: ./frontend
+    working_dir: /app
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html:ro
+    ports:
+      - "5173:5173"
+    command: ["npm","run","dev","--","--host","0.0.0.0"]
+
+volumes:
+  ipfs_data:
+  ipfs_export:

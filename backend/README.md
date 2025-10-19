@@ -133,7 +133,6 @@ ISSUER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HEX
 ```
 
 - Use a **dedicated** issuer wallet with minimal on-chain funds.
-- Never commit `.env` to version control.
 
 ---
 
@@ -248,18 +247,6 @@ Returned values:
 - `merkle_root`: `0x` + 64 hex
 - `merkle_salts[path]`: `0x` + 64 hex (one per field)
 - `field_proofs[path]`: `{ salt, proof[] }` with sibling hashes bottom→top
-
----
-
-## Development tips
-
-- Run locally:
-  ```bash
-  uvicorn main:app --reload
-  ```
-- Default CORS origin is `http://localhost:5173` (Vite). Add more origins in `main.py` if needed.
-- Logs from Selenium are printed to the console; adapt to `logging` if desired.
-- For production, run behind a proper ASGI server (e.g., `uvicorn` with workers, or `gunicorn -k uvicorn.workers.UvicornWorker`).
 
 ---
 
