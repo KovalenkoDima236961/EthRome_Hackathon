@@ -65,6 +65,18 @@ Go to frontend/ and follow frontend/README.md for install and run steps.
 ### Backend
 Go to backend/ and follow backend/README.md for install and run steps.
 
+### IPFS CORS preflight (run this before using the app) (required)
+Before you start working with the app that talks to your local IPFS (Kubo) node, verify that CORS is properly configured for your frontend origin (e.g., http://localhost:5173). Use the helper script check-ipfs-cors.sh.
+How to run it
+```bash
+chmod +x check-ipfs-cors.sh
+./check-ipfs-cors.sh
+```
+- If you see ✅ CORS is properly configured, you’re good to go.
+- If you see ❌ CORS is not properly configured, follow the printed ipfs config commands, then restart the daemon and run the script again.
+
+Docker users: If you run IPFS in Docker, run the ipfs config ... commands inside the container (e.g., docker exec -it <container_name> sh), make sure ports 5001 (API) and 8080 (gateway) are published, and that the config is persisted via a volume.
+
 ### Local IPFS (required)
 Install and run a local IPFS (Kubo) node. Ensure the HTTP API is reachable at http://localhost:5001 (gateway typically http://localhost:8080). Start it with:
 ```bash
