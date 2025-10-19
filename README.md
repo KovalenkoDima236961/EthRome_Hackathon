@@ -1,6 +1,10 @@
 # CertifyChain — A Secure Bridge from Online Certificates to Verifiable Self-Bound Tokens
 <img width="1172" height="819" alt="image" src="https://github.com/user-attachments/assets/9407e9c2-5ed2-4be0-81b0-30a8251c2c38" />
 
+Today, the number of fake and forged certificates is growing quickly, making it hard to know which ones are real. Certificates from platforms like Udemy, Coursera, AWS, or Cisco can be checked manually, but this process is slow and not practical for many users.
+
+CertifyChain solves this problem by letting users create a self-bound NFT from their verified certificate. This token works as clear, on-chain proof that the certificate is real, original, and not fake.
+
 CertifyChain is a platform that transforms traditional Web2 course certificates — such as those issued by platforms like Udemy — into self-bound NFT tokens on the blockchain. These tokens serve as verifiable proof that a specific user has successfully obtained a given certificate. In other words, CertifyChain acts as a bridge between Web2 achievements and the Web3 ecosystem.
 
 To issue a token, the user simply uploads their certificate in PDF format. The system then performs a two-step verification process:
