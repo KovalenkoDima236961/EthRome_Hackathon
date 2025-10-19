@@ -45,7 +45,7 @@ export const uint8ArrayToWordArray = (u8: Uint8Array): CryptoJS.lib.WordArray =>
     const words: number[] = [];
     for (let i = 0;i < u8.length; i += 4) {
         words.push(
-            (u8[i] << 24) | ((u8[i + 1] ?? 0) << 16) || ((u8[i + 2] ?? 0) << 8) | (u8[i + 3] ?? 0),
+            (u8[i] << 24) | ((u8[i + 1] ?? 0) << 16) | ((u8[i + 2] ?? 0) << 8) | (u8[i + 3] ?? 0)
         );
     }
     return CryptoJS.lib.WordArray.create(words, u8.length);
@@ -67,4 +67,17 @@ export const wordArrayToUint8Array = (wordArray: CryptoJS.lib.WordArray): Uint8A
         u8[i++] = w & 0xff;
     }
     return u8;   
+}
+
+export const decryptData = (encryptedBytes: Uint8Array, key: CryptoJS.lib.WordArray): Uint8Array => {
+    if (encryptedBytes.length < 16) throw new Error('Invalid encrypted data');
+    const iv = CryptoJS.lib.WordArray.create(encryptedBytes.slice(0, 16));
+    const ciphertext = CryptoJS.lib.WordArray.create(encryptedBytes.slice(16));
+    const decrypted = CryptoJS.AES.decrypt({ ciphertext }, key, {
+        iv, 
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+    });
+    if (decrypted.sigBytes <= 0) throw new Error('Decryption failed (bad key or data)');
+    return wordArrayToUint8Array(decrypted);
 }
