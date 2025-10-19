@@ -428,14 +428,17 @@ export const MintCertificatePage: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Mint Your <GradientText
-                colors={["#40ffaa", "#4079ff", "#40ffaa", "#4079ff", "#40ffaa"]}
-                animationSpeed={5}
-                showBorder={false}
-                className="inline"
+            Mint Your <span 
+                className="inline-block text-transparent bg-clip-text animate-gradient"
+                style={{
+                  backgroundImage: 'linear-gradient(to right, #a855f7, #14b8a6, #a855f7)',
+                  backgroundSize: '300% 100%',
+                  animationDuration: '3s',
+                  WebkitBackgroundClip: 'text'
+                }}
               >
                 Certificate
-              </GradientText>
+              </span>
           </h1>
           <p className="text-xl text-gray-300">
             Upload, verify, and mint your certificate as an NFT
