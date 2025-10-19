@@ -19,6 +19,12 @@ Server-side verification is performed by checking the certificate ID through the
 
 The certificate hash is automatically extracted using AI-powered OCR (Optical Character Recognition) algorithms. Once identified, the backend sends a verification request to the certificate authority’s API to confirm its authenticity.
 
+If a user submits an invalid certificate, the verification process will reject it, and the transaction will be reverted.
+
+<img width="1574" height="731" alt="image" src="https://github.com/user-attachments/assets/0e6b1900-60bd-47cf-b618-8f5f0f30fe96" />
+
+<img width="677" height="610" alt="image" src="https://github.com/user-attachments/assets/34c4c4e6-505f-4cd8-855d-2fc68a695e2d" />
+
 After successful verification, the system encrypts the entire certificate file and sends it to the smart contract, which checks whether this certificate has already been published on-chain.
 
 Finally, the user can mint a self-bound NFT, which serves as a verifiable, non-transferable proof of certificate ownership.
